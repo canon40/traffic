@@ -13,6 +13,14 @@ MOBILE_UA = (
     "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 )
 
+GENERIC_INTROS = (
+    "안녕하세요",
+    "이번 글에서는",
+    "오늘은",
+    "정리하면",
+    "도움이 되셨길",
+)
+
 
 def load_config():
     if not os.path.exists(CONFIG_PATH):
@@ -76,6 +84,44 @@ def _images_without_alt(html):
     return missing, len(imgs)
 
 
+def _html_to_text(html: str) -> str:
+    text = re.sub(r"<br\s*/?>", "\n", html, flags=re.I)
+    text = re.sub(r"</(p|div|li|h1|h2|h3|tr)>", "\n", text, flags=re.I)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\n\s*\n+", "\n\n", text)
+    return re.sub(r"[ \t]+", " ", text).strip()
+
+
+def _paragraph_sentence_stats(text: str) -> tuple[int, int]:
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    if not paragraphs:
+        return 0, 0
+    sentence_counts = []
+    for paragraph in paragraphs:
+        count = len([s for s in re.split(r"(?<=[.!?다요])\s+", paragraph) if s.strip()])
+        sentence_counts.append(max(count, 1))
+    return max(sentence_counts), len(paragraphs)
+
+
+def _keyword_repeat_count(text: str, keywords: list[str]) -> tuple[str, int]:
+    lowered = text.lower()
+    top_kw = ""
+    top_count = 0
+    for keyword in keywords:
+        keyword = keyword.strip()
+        if not keyword:
+            continue
+        count = lowered.count(keyword.lower())
+        if count > top_count:
+            top_kw = keyword
+            top_count = count
+    return top_kw, top_count
+
+
+def _extract_h2_like_blocks(html: str) -> list[str]:
+    return [m.strip() for m in re.findall(r"<h2[^>]*>(.*?)</h2>", html, re.I | re.S)]
+
+
 def audit_page(url, page_type="page", target_keywords=None):
     target_keywords = target_keywords or []
     checks = []
@@ -109,6 +155,7 @@ def audit_page(url, page_type="page", target_keywords=None):
     viewport = _extract_meta(html, name="viewport")
     h1_count = _count_tags(html, "h1")
     missing_alt, img_total = _images_without_alt(html)
+    text = _html_to_text(html)
 
     add_check(
         "페이지 제목(title)",
@@ -155,6 +202,59 @@ def audit_page(url, page_type="page", target_keywords=None):
             len(found) > 0,
             f"발견: {', '.join(found) if found else '없음'} (대상: {', '.join(target_keywords[:3])})",
             2,
+        )
+
+    if page_type == "blog":
+        max_sentences, paragraph_count = _paragraph_sentence_stats(text)
+        add_check(
+            "문단 길이",
+            paragraph_count > 0 and max_sentences <= 3,
+            f"{'✓' if max_sentences <= 3 else '✗'} 최대 {max_sentences}문장 (권장 3문장 이하)",
+            2,
+        )
+        h2_blocks = _extract_h2_like_blocks(html)
+        qna_count = sum(1 for block in h2_blocks if "?" in block or "까요" in block or "얼마" in block)
+        add_check(
+            "Q&A 구조",
+            qna_count >= 2,
+            f"{'✓' if qna_count >= 2 else '✗'} 질문형 소제목 {qna_count}개 (권장 2개 이상)",
+            2,
+        )
+        table_count = _count_tags(html, "table")
+        add_check(
+            "표(Table) 구조화",
+            table_count >= 1 or "|" in text,
+            f"{'✓' if table_count >= 1 or '|' in text else '✗'} 표 {table_count}개",
+            2,
+        )
+        list_count = _count_tags(html, "ul") + _count_tags(html, "ol")
+        add_check(
+            "리스트 구조화",
+            list_count >= 1,
+            f"{'✓' if list_count >= 1 else '✗'} 리스트 {list_count}개",
+            1,
+        )
+        intro_window = text[:200]
+        intro_ok = any(kw.lower() in intro_window.lower() for kw in target_keywords[:2]) if target_keywords else True
+        add_check(
+            "도입부 두괄식",
+            intro_ok and len(intro_window) >= 30,
+            f"{'✓' if intro_ok else '✗'} 첫 200자 내 핵심 키워드/요약 확인",
+            2,
+        )
+        keyword_name, keyword_count = _keyword_repeat_count(text, target_keywords)
+        add_check(
+            "키워드 반복 과다",
+            keyword_count <= 5 or not keyword_name,
+            f"{'✓' if keyword_count <= 5 or not keyword_name else '✗'} {keyword_name or '키워드'} {keyword_count}회",
+            1,
+        )
+        generic_intro_found = next((intro for intro in GENERIC_INTROS if intro in text[:160]), "")
+        add_check(
+            "상투적 서론 억제",
+            not generic_intro_found,
+            f"{'✓' if not generic_intro_found else '✗'} {generic_intro_found or '문제 없음'}",
+            1,
         )
 
     if page_type == "product":

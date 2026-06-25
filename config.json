@@ -408,5 +408,14 @@
     "https://blog.naver.com/hymini1",
     "https://blog.naver.com/selfcoat",
     "https://hymini1.tistory.com/"
-  ]
+  ],
+  "content_rules": {
+    "max_sentences_per_paragraph": 3,
+    "intro_keyword_window": 200,
+    "max_keyword_repeats": 5,
+    "require_table": true,
+    "require_list": true,
+    "require_qna_count": 2,
+    "require_experience_lines": 2
+  }
 }

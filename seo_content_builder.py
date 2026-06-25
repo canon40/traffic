@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime
 
 CONFIG_PATH = "config.json"
@@ -18,12 +19,109 @@ WORKFLOW_TYPES = {
     "cta": "구매 유도 CTA",
 }
 
+DEFAULT_CONTENT_RULES = {
+    "max_sentences_per_paragraph": 3,
+    "intro_keyword_window": 200,
+    "max_keyword_repeats": 5,
+    "require_table": True,
+    "require_list": True,
+    "require_qna_count": 2,
+    "require_experience_lines": 2,
+}
+
 
 def load_config():
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     return {"store_name": "나눔랩", "brand": "나눔랩"}
+
+
+def _content_rules(config: dict) -> dict:
+    rules = dict(DEFAULT_CONTENT_RULES)
+    rules.update(config.get("content_rules") or {})
+    return rules
+
+
+def _infer_intent(keyword: str, product_name: str) -> str:
+    keyword = keyword.strip()
+    if any(token in keyword for token in ("후기", "해봤", "리뷰")):
+        return "review"
+    if any(token in keyword for token in ("비교", "가성비", "가격")):
+        return "comparison"
+    if any(token in keyword for token in ("방법", "순서", "사용법", "직접", "DIY", "셀프")):
+        return "howto"
+    if any(token in keyword for token in ("장마", "중고차", "신차", "광택", "발수", "관리")):
+        return "problem_solution"
+    if "리빙코트" in keyword or "가구" in keyword or "원목" in keyword:
+        return "howto"
+    if "퍼마코트" in product_name or "자동차" in keyword:
+        return "review"
+    return "comparison"
+
+
+def _smartstore_link(product_name: str) -> str:
+    return f"[{product_name} 스마트스토어 바로가기](상품 링크를 여기에 붙여넣기)"
+
+
+def _keyword_variants(keyword: str) -> list[str]:
+    base = [keyword]
+    if "자동차코팅제" in keyword:
+        base.extend(["차량 코팅제", "셀프 코팅"])
+    elif "리빙코트" in keyword:
+        base.extend(["가구 코팅", "원목 코팅"])
+    elif "유리막" in keyword:
+        base.extend(["유리막 코팅", "발수 코팅"])
+    return list(dict.fromkeys(base))
+
+
+def _experience_lines(product_name: str, keyword: str) -> list[str]:
+    return [
+        f"{product_name}를 써 본 결과, {keyword} 관련 검색에서 많이 언급되는 발수감은 분명히 체감됐습니다.",
+        "좋았던 점만 적기보다, 처음 도포할 때 양 조절이 생각보다 중요하다는 점도 같이 적어두는 편이 신뢰에 도움이 됩니다.",
+        "직접 해 보니 작업 시간은 짧았지만, 표면 정리와 건조를 대충 하면 결과 차이가 크게 났습니다.",
+    ]
+
+
+def _comparison_table(product_name: str, keyword: str) -> str:
+    return (
+        "| 비교 항목 | 직접 확인한 포인트 |\n"
+        "| --- | --- |\n"
+        f"| 핵심 키워드 | {keyword} |\n"
+        f"| 추천 제품 | 나눔랩 {product_name} |\n"
+        "| 체감 장점 | 발수감, 관리 편의성, 광택 유지 |\n"
+        "| 아쉬운 점 | 초반 도포량을 맞추는 연습이 필요 |\n"
+    )
+
+
+def _qna_block(keyword: str, product_name: str) -> str:
+    return (
+        f"## {keyword} 비용은 얼마나 들까?\n"
+        f"정답은 작업 범위에 따라 다르지만, 전문 시공 대비 {product_name} 셀프 작업이 예산을 줄이는 데 유리했습니다.\n\n"
+        f"## {keyword} 초보자도 바로 할 수 있을까?\n"
+        "준비물만 갖춰 두면 가능했지만, 첫 작업은 작은 면적부터 시작하는 쪽이 확실히 안전했습니다."
+    )
+
+
+def _normalize_paragraphs(text: str, max_sentences: int) -> str:
+    chunks = []
+    for block in text.split("\n\n"):
+        stripped = block.strip()
+        if not stripped or stripped.startswith("#") or stripped.startswith("|") or stripped.startswith("- ") or stripped.startswith("1. "):
+            chunks.append(stripped)
+            continue
+        sentences = re.split(r"(?<=[.!?])\s+", stripped)
+        current = []
+        for sentence in sentences:
+            if not sentence:
+                continue
+            current.append(sentence)
+            if len(current) >= max_sentences:
+                chunks.append(" ".join(current).strip())
+                current = []
+        if current:
+            chunks.append(" ".join(current).strip())
+    return "\n\n".join(chunk for chunk in chunks if chunk)
 
 
 def _abcd_product_detail(keyword, product_name, brand):
@@ -58,31 +156,57 @@ def _abcd_product_detail(keyword, product_name, brand):
     }
 
 
-def _blog_review(keyword, product_name, brand):
-    keywords = ["자동차코팅제", "셀프 유리막 코팅", "듀라코트 리빙코트"]
-    if keyword and keyword not in keywords:
-        keywords.insert(0, keyword)
-    h1 = f"{product_name} — {keyword} 셀프 코팅 후기"
+def _blog_review(keyword, product_name, brand, rules):
+    intent = _infer_intent(keyword, product_name)
+    keywords = _keyword_variants(keyword)
+    h1 = f"{keyword} 핵심 정리 | {product_name} 직접 써 본 결론"
     meta = (
-        f"{brand} {product_name} {keyword} 사용 후기. "
-        f"자동차코팅제, 셀프 유리막 코팅, 듀라코트 리빙코트 비교와 "
-        f"초보자 DIY 코팅 가이드를 정리했습니다."
+        f"{brand} {product_name} 기준으로 {keyword} 핵심 포인트를 먼저 정리했습니다. "
+        "비교표, 사용 순서, 직접 써 본 장단점과 Q&A를 함께 확인할 수 있습니다."
     )
     meta = meta[:160] if len(meta) <= 160 else meta[:157] + "…"
-    body = (
-        f"# {h1}\n\n"
-        f"{brand} {product_name}로 **{keyword}**를 직접 시공해 본 후기입니다.\n"
-        f"**자동차코팅제**, **셀프 유리막 코팅**, **듀라코트 리빙코트**를 함께 비교하며\n"
-        f"차량·가구 관리에 도움이 되는 팁을 공유합니다.\n\n"
-        f"## 왜 {keyword}를 선택했나요\n"
-        f"세차·가구 관리 비용을 줄이면서 광택과 발수 효과를 원하셨다면 셀프 코팅이 합리적입니다.\n\n"
-        f"## 사용 과정\n"
-        f"1. 세척·건조\n2. 균일 도포\n3. 경화·마무리\n\n"
-        f"## 한 달 사용 소감\n"
-        f"발수감과 광택 유지가 눈에 띄었습니다. 상세페이지 링크는 글 하단에 배치하세요.\n\n"
-        f"## 총평\n"
-        f"자동차코팅제와 듀라코트 리빙코트를 검색하시는 분들께 경험을 공유합니다."
+
+    intro = (
+        f"{keyword}를 찾는 분이라면 결론부터 보시면 됩니다. "
+        f"{brand} {product_name}는 초보자도 접근하기 쉬웠고, 발수감과 관리 편의성 쪽에서 차이가 있었습니다. "
+        "아래에 바로 비교표와 실제 사용 포인트를 정리했습니다."
     )
+    experience = _experience_lines(product_name, keyword)
+    sections = {
+        "review": (
+            f"## 먼저 결론\n{intro}\n\n"
+            f"## 직접 써 보고 느낀 점\n{experience[0]}\n\n{experience[1]}\n\n"
+            f"## 비교표\n{_comparison_table(product_name, keyword)}\n\n"
+            f"## 사용하면서 아쉬웠던 점\n{experience[2]}\n\n"
+            f"{_qna_block(keyword, product_name)}\n\n"
+            f"## 정리\n{_smartstore_link(product_name)}"
+        ),
+        "comparison": (
+            f"## 먼저 결론\n{intro}\n\n"
+            f"## 비교 기준 3가지\n- 가격 대비 체감 효과\n- 도포 난이도\n- 유지 관리 편의성\n\n"
+            f"## 비교표\n{_comparison_table(product_name, keyword)}\n\n"
+            f"## 직접 비교하며 본 차이\n{experience[0]}\n\n{experience[2]}\n\n"
+            f"{_qna_block(keyword, product_name)}\n\n"
+            f"## 선택 팁\n{_smartstore_link(product_name)}"
+        ),
+        "howto": (
+            f"## 먼저 결론\n{intro}\n\n"
+            f"## 준비 순서\n1. 표면 세척\n2. 충분한 건조\n3. 소량 도포\n4. 잔사 정리\n\n"
+            f"## 작업 체크표\n{_comparison_table(product_name, keyword)}\n\n"
+            f"## 직접 해 보니 주의할 점\n{experience[0]}\n\n{experience[1]}\n\n"
+            f"{_qna_block(keyword, product_name)}\n\n"
+            f"## 마무리\n{_smartstore_link(product_name)}"
+        ),
+        "problem_solution": (
+            f"## 먼저 결론\n{intro}\n\n"
+            f"## 이런 경우에 체감이 컸음\n- 장마철 물때 관리\n- 신차 초기 보호\n- 중고차 외장 정리\n\n"
+            f"## 해결 포인트 표\n{_comparison_table(product_name, keyword)}\n\n"
+            f"## 직접 확인한 효과와 한계\n{experience[0]}\n\n{experience[2]}\n\n"
+            f"{_qna_block(keyword, product_name)}\n\n"
+            f"## 추천 대상\n{_smartstore_link(product_name)}"
+        ),
+    }
+    body = _normalize_paragraphs(sections[intent], int(rules["max_sentences_per_paragraph"]))
     return {
         "workflow": "blog_review",
         "title": h1,
@@ -90,6 +214,8 @@ def _blog_review(keyword, product_name, brand):
         "meta_description": meta,
         "body": body,
         "seo_keywords": keywords,
+        "intent": intent,
+        "content_rules": rules,
     }
 
 
@@ -111,10 +237,11 @@ def generate_content(workflow_type, keyword, product_name=None, brand=None):
     config = load_config()
     brand = brand or config.get("store_name", "나눔랩")
     product_name = product_name or config.get("default_product_name", "퍼마코트")
+    rules = _content_rules(config)
 
     builders = {
         "product_detail": lambda: _abcd_product_detail(keyword, product_name, brand),
-        "blog_review": lambda: _blog_review(keyword, product_name, brand),
+        "blog_review": lambda: _blog_review(keyword, product_name, brand, rules),
         "meta_tags": lambda: _meta_tags(keyword, product_name, brand),
         "comparison": lambda: {
             "workflow": "comparison",
@@ -163,6 +290,7 @@ def generate_content(workflow_type, keyword, product_name=None, brand=None):
         "keyword": keyword,
         "product_name": product_name,
         "brand": brand,
+        "intent": _infer_intent(keyword, product_name),
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "content": content,
     }

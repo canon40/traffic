@@ -83,6 +83,13 @@ PRODUCT_SELLING_POINTS = {
     },
 }
 
+INTENT_RULES = {
+    "review": "후기형",
+    "comparison": "비교형",
+    "howto": "방법형",
+    "problem_solution": "문제해결형",
+}
+
 # ── 블로그 글 구조 템플릿 ────────────────────────────────────────
 POST_STRUCTURES = [
     # 구조 A: 문제 → 원인 → 해결
@@ -158,6 +165,22 @@ def _get_product_url(config, product_id):
     return STORE_URL
 
 
+def _infer_intent(keyword, product_name):
+    if any(token in keyword for token in ("후기", "리뷰", "해봤")):
+        return "review"
+    if any(token in keyword for token in ("비교", "가성비", "가격")):
+        return "comparison"
+    if any(token in keyword for token in ("방법", "순서", "사용법", "DIY", "셀프", "직접")):
+        return "howto"
+    if any(token in keyword for token in ("장마", "신차", "중고차", "광택", "발수", "관리")):
+        return "problem_solution"
+    if "리빙코트" in keyword or "가구" in keyword or "원목" in keyword:
+        return "howto"
+    if "퍼마코트" in product_name:
+        return "review"
+    return "comparison"
+
+
 class SeoBlogCampaignEngine:
     def __init__(self, logger=None):
         self.logger = logger or print
@@ -194,22 +217,27 @@ class SeoBlogCampaignEngine:
 
     def _build_seo_prompt(self, keyword, product_name, product_url, sp, structure):
         outline_text = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(structure["outline"]))
+        intent = INTENT_RULES[_infer_intent(keyword, product_name)]
         return (
             f"당신은 '나눔랩' 소속 15년 차 제품 전문가입니다.\n"
             f"아래 SEO 최적화 블로그 글을 작성해 주세요.\n\n"
             f"[타겟 키워드] {keyword}\n"
             f"[상품명] {product_name}\n"
+            f"[문서 유형] {intent}\n"
             f"[상품 USP] {sp['usp']}\n"
             f"[타겟 고객] {sp['target_pain']} 분들\n"
             f"[핵심 혜택] {sp['benefit']}\n\n"
             f"[글 구조 — {structure['name']}]\n{outline_text}\n\n"
             f"[SEO 규칙]\n"
-            f"1. 제목: '{keyword}'를 맨 앞에 포함, 30자 이내, 클릭 유도\n"
-            f"2. 첫 150자 내에 '{keyword}' 자연스럽게 2회 이상 포함\n"
-            f"3. H2 소제목 2~3개에 '{keyword}' 변형(유의어) 포함\n"
-            f"4. 분량: 1,500자 이상\n"
-            f"5. 어조: 친근하고 신뢰감 있는 전문가 한국어\n"
-            f"6. 광고 느낌 최소화, 정보 전달 위주\n\n"
+            f"1. 인사말이나 뻔한 서론 없이 첫 문단에 결론과 핵심 요약 3가지를 먼저 배치\n"
+            f"2. 한 문단은 최대 3문장까지, 문단 사이 공백 유지\n"
+            f"3. 본문 첫 200자 안에 '{keyword}'와 '{product_name}'를 모두 포함\n"
+            f"4. 질문형 H2를 2개 이상 포함하고, 비교/비용/방법 질문 중 하나를 반드시 사용\n"
+            f"5. 표 1개 이상, 리스트 1개 이상 포함\n"
+            f"6. 직접 써 본 듯한 장점 1개와 아쉬운 점 1개를 모두 포함\n"
+            f"7. 같은 키워드를 기계적으로 반복하지 말고 5회 이하로 제한\n"
+            f"8. '~라고 합니다'보다 '~를 확인했음', '~해 본 결과' 같은 경험형 어조 사용\n"
+            f"9. 본문 중간에 상품 링크 1개 포함: {product_url}\n\n"
             f"반드시 아래 JSON만 반환 (마크다운 코드블록 없이):\n"
             '{"title": "SEO 최적화 제목", "body": "HTML 본문 (h2, p, strong, ul, ol, blockquote 태그 사용)"}'
         )
@@ -245,104 +273,97 @@ class SeoBlogCampaignEngine:
         return self._generate_template(keyword, product_name, product_url, sp, structure)
 
     def _generate_template(self, keyword, product_name, product_url, sp, structure):
-        """SEO 최적화 내장 템플릿 — 키워드 밀도 자동 조절"""
+        """SEO 최적화 내장 템플릿 — 규칙형 구조 강제"""
         today = datetime.now().strftime("%Y년 %m월 %d일")
         img_url = random.choice(REFERENCE_IMAGES)
+        intent = _infer_intent(keyword, product_name)
 
-        # 키워드 변형 (자연스러운 반복용)
         kw_parts = keyword.split()
         kw_variant1 = " ".join(kw_parts[::-1]) if len(kw_parts) > 1 else keyword + " 방법"
         kw_variant2 = kw_parts[0] + " 제품" if kw_parts else keyword
 
-        title = f"{keyword} — 전문가가 알려주는 {sp['benefit'][:20]}"
+        title_map = {
+            "review": f"{keyword} 직접 써 본 결론 | {product_name}",
+            "comparison": f"{keyword} 비교 기준 정리 | {product_name}",
+            "howto": f"{keyword} 방법 정리 | {product_name}",
+            "problem_solution": f"{keyword} 해결 포인트 | {product_name}",
+        }
+        title = title_map[intent]
 
         body = f"""
 <div style="line-height:1.9;font-family:'Noto Sans KR',sans-serif;color:#222;max-width:720px;margin:0 auto;">
 
   <p style="background:#f0f9f0;border-left:4px solid #2db400;padding:14px 18px;border-radius:4px;font-size:0.97em;">
-    <strong>📌 요약:</strong> {keyword}을 찾고 계신가요? {sp['benefit']}. 
-    나눔랩 {product_name}의 실제 사용법과 효과를 {today} 기준으로 정리했습니다.
+    <strong>핵심 요약:</strong> {keyword}을 찾는다면 먼저 결론부터 보시면 됩니다. 
+    나눔랩 {product_name}는 {sp['benefit']} 쪽에서 체감이 있었고, 작업 전 준비와 도포량이 결과를 크게 좌우했습니다.
   </p>
 
   <h2 style="color:#1a1a1a;border-left:4px solid #2db400;padding-left:14px;margin-top:36px;">
-    {sp['target_pain']} 분들, 이 글을 주목하세요
+    {keyword}에서 먼저 봐야 할 포인트는 무엇일까?
   </h2>
   <p>
-    {keyword}을 검색하셨다면, 아마 지금 이런 상황일 겁니다.<br>
-    열심히 세차했는데 며칠 만에 다시 더러워지거나, 비싼 제품을 샀는데 효과가 없거나.<br>
-    사실 <strong>{keyword}</strong>의 핵심은 <em>제품 선택</em>이 아니라 <em>올바른 방법</em>입니다.
-    오늘은 나눔랩 연구팀이 직접 알려드리겠습니다.
+    {keyword}을 찾는 분들은 보통 {sp['target_pain']} 경우가 많았습니다.
+    직접 써 본 결과 제품 자체보다 표면 준비와 얇은 도포가 만족도를 더 크게 바꿨습니다.
   </p>
 
   <br>
-  <img src="{img_url}" alt="{keyword} 사용 사례" style="max-width:100%;border-radius:12px;margin:16px 0;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
+  <img src="{img_url}" alt="{keyword} 사용 사례" style="max-width:100%;border-radius:12px;margin:16px 0;">
   <p style="font-size:0.85em;color:#888;text-align:center;margin-top:-8px;">나눔랩 {product_name} 시공 전·후 비교</p>
 
   <h2 style="color:#1a1a1a;border-left:4px solid #2db400;padding-left:14px;margin-top:36px;">
-    {kw_variant1}를 선택할 때 가장 중요한 기준
+    {kw_variant1} 비교 기준은 어떻게 잡는 게 좋을까?
   </h2>
-  <p>
-    시중에 {keyword} 제품이 너무 많아 고르기 어려우시죠? 
-    전문가 입장에서 딱 3가지 기준만 보시면 됩니다.
-  </p>
-  <ol style="line-height:2.2;">
-    <li><strong>원료 성분:</strong> 나노 SiO₂(이산화규소) 함량이 높을수록 지속력 UP</li>
-    <li><strong>점도:</strong> 너무 묽으면 흘러내리고, 너무 진하면 얼룩 발생 — 중간 점도가 최적</li>
-    <li><strong>경화 방식:</strong> 자연 경화 vs UV 경화 — 셀프 시공엔 자연 경화 제품 추천</li>
-  </ol>
-  <p>
-    나눔랩 <strong>{product_name}</strong>은 이 세 가지를 모두 충족하도록 설계된 제품입니다.<br>
-    <em>{sp['usp']}</em>
-  </p>
+  <table style="width:100%;border-collapse:collapse;margin:12px 0 20px 0;">
+    <tr><th style="text-align:left;border-bottom:1px solid #ddd;padding:10px;">비교 항목</th><th style="text-align:left;border-bottom:1px solid #ddd;padding:10px;">직접 본 포인트</th></tr>
+    <tr><td style="padding:10px;border-bottom:1px solid #eee;">핵심 키워드</td><td style="padding:10px;border-bottom:1px solid #eee;">{keyword}</td></tr>
+    <tr><td style="padding:10px;border-bottom:1px solid #eee;">체감 장점</td><td style="padding:10px;border-bottom:1px solid #eee;">{sp['benefit']}</td></tr>
+    <tr><td style="padding:10px;border-bottom:1px solid #eee;">아쉬운 점</td><td style="padding:10px;border-bottom:1px solid #eee;">초반 도포량 감각을 익히는 시간이 필요했음</td></tr>
+    <tr><td style="padding:10px;border-bottom:1px solid #eee;">선택 이유</td><td style="padding:10px;border-bottom:1px solid #eee;">{sp['usp']}</td></tr>
+  </table>
+  <ul style="line-height:2.1;">
+    <li>너무 긴 설명보다 작업 난이도와 유지 편의성부터 보는 쪽이 실제 선택에 도움 됐습니다.</li>
+    <li>발수감과 광택은 보였지만, 첫 시공 때는 한 패널씩 나눠 바르는 방식이 더 안정적이었습니다.</li>
+    <li><a href="{product_url}" target="_blank" style="color:#2db400;font-weight:bold;text-decoration:underline;">스마트스토어 상품 링크</a>는 중간에 한 번만 넣어 흐름을 끊지 않게 구성했습니다.</li>
+  </ul>
 
   <h2 style="color:#1a1a1a;border-left:4px solid #2db400;padding-left:14px;margin-top:36px;">
-    집에서 {kw_variant2} 올바르게 쓰는 법 (단계별)
+    집에서 {kw_variant2} 쓰는 순서는 어떻게 잡아야 할까?
   </h2>
   <ol style="line-height:2.4;">
-    <li>
-      <strong>표면 청소</strong><br>
-      먼지·기름기를 완전히 제거해야 코팅이 제대로 밀착됩니다.
-      전용 탈지제나 이소프로필알코올(IPA)로 닦아주세요.
-    </li>
-    <li>
-      <strong>소량씩 고르게 도포</strong><br>
-      전용 스펀지에 제품을 콩알 2~3개 크기로 덜어, 가로→세로 교차로 얇고 균일하게 바릅니다.
-    </li>
-    <li>
-      <strong>경화 대기</strong><br>
-      도포 후 5~10분 대기 → 마이크로파이버 타월로 남은 제품을 닦아냅니다.
-      완전 경화는 12~24시간 (이 사이 수분 접촉 금지).
-    </li>
-    <li>
-      <strong>마무리 점검</strong><br>
-      물을 살짝 뿌려보면 또르르 굴러가는 발수 효과를 바로 확인할 수 있습니다.
-    </li>
+    <li><strong>표면 정리</strong><br>먼지와 유분을 먼저 없애야 결과 차이가 컸습니다.</li>
+    <li><strong>소량 도포</strong><br>처음부터 많이 바르기보다 얇게 여러 번 나누는 편이 얼룩이 적었습니다.</li>
+    <li><strong>경화 대기</strong><br>바른 직후 바로 닦기보다 잠깐 기다린 뒤 잔사를 정리하는 쪽이 균일했습니다.</li>
+    <li><strong>최종 확인</strong><br>발수 테스트와 표면 촉감을 함께 봐야 체감 차이를 판단하기 쉬웠습니다.</li>
   </ol>
 
   <h2 style="color:#1a1a1a;border-left:4px solid #2db400;padding-left:14px;margin-top:36px;">
-    실제 사용자 후기
+    직접 써 보니 아쉬운 점은 없었을까?
   </h2>
-  <blockquote style="background:#f8f8f8;border-left:4px solid #2db400;padding:16px 20px;border-radius:4px;margin:16px 0;font-style:italic;">
-    "{keyword}을 찾다가 나눔랩 {product_name}을 구매했는데, 
-    도포 후 다음 날 비가 왔는데 물방울이 완전히 구슬처럼 굴러다녔어요. 
-    {sp['proof']} — 강력 추천합니다!"<br>
-    <strong style="color:#2db400;font-style:normal;">— 실제 구매 고객 ★★★★★</strong>
-  </blockquote>
+  <p>
+    {keyword}을 기준으로 보면 장점은 분명했습니다. 특히 {sp['benefit']} 쪽은 직접 확인했을 때 차이가 남았습니다.
+  </p>
+  <p>
+    다만 첫 시공에서는 양 조절이 생각보다 중요했고, 너무 서두르면 닦임 자국이 남을 수 있었습니다.
+  </p>
 
-  <div style="background:linear-gradient(135deg,#f0f9f0,#e8f5e9);border-radius:12px;padding:24px;margin:32px 0;text-align:center;">
-    <p style="font-size:1.1em;font-weight:bold;color:#1a1a1a;margin:0 0 8px;">
-      {sp['cta']}
-    </p>
-    <p style="color:#555;margin:0 0 20px;font-size:0.95em;">
-      지금 바로 나눔랩 공식 스마트스토어에서 확인하세요.
-    </p>
-    <a href="{product_url}" target="_blank"
-       style="display:inline-block;background:linear-gradient(135deg,#2db400,#00a060);
-              color:#fff;padding:16px 36px;text-decoration:none;border-radius:10px;
-              font-weight:bold;font-size:1.1em;box-shadow:0 6px 20px rgba(45,180,0,0.35);
-              letter-spacing:0.3px;">
-      👉 나눔랩 {product_name} 공식 스토어 보러가기
-    </a>
+  <h2 style="color:#1a1a1a;border-left:4px solid #2db400;padding-left:14px;margin-top:36px;">
+    {keyword} 비용은 얼마나 들까?
+  </h2>
+  <p>
+    전문 시공과 비교하면 초기 비용은 줄일 수 있었지만, 작업 시간을 직접 쓰는 만큼 준비물과 순서를 미리 확인하는 편이 효율적이었습니다.
+  </p>
+
+  <h2 style="color:#1a1a1a;border-left:4px solid #2db400;padding-left:14px;margin-top:36px;">
+    {keyword} 초보자도 바로 할 수 있을까?
+  </h2>
+  <p>
+    가능했습니다. 다만 작은 면적부터 시작하고, 작업 사이사이 표면 상태를 확인하는 방식이 실패 확률을 줄여줬습니다.
+  </p>
+
+  <div style="background:#f6f7f8;border-radius:12px;padding:24px;margin:32px 0;">
+    <p style="font-size:1.05em;font-weight:bold;color:#1a1a1a;margin:0 0 8px;">정리하면</p>
+    <p style="color:#555;margin:0 0 12px;font-size:0.95em;">{sp['cta']}</p>
+    <p style="margin:0;"><a href="{product_url}" target="_blank" style="color:#2db400;font-weight:bold;text-decoration:underline;">나눔랩 {product_name} 자세히 보기</a></p>
   </div>
 
 </div>
