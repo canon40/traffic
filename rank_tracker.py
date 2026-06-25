@@ -440,8 +440,11 @@ def build_completion_report(results):
             continue
 
         prev = r.get("prev_rank")
-        rank = r["rank"]
-        if prev is None:
+        rank = r.get("rank")
+        if rank is None:
+            status = "미발견"
+            unchanged += 1
+        elif prev is None:
             status = "신규기록"
             unchanged += 1
         elif rank < prev:

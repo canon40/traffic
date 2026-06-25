@@ -1,0 +1,689 @@
+{
+  "at": "2026-06-25T15:59:03.760047",
+  "rank": {
+    "summary": "작업 완료 — 상승 0건, 하락 0건, 유지/신규 104건",
+    "items": [
+      {
+        "keyword": "자동차코팅제",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "셀프 유리막 코팅",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "듀라코트 리빙코트",
+        "store_name": "나눔랩",
+        "status": "유지",
+        "prev_rank": 2,
+        "current_rank": 2,
+        "prev_text": "2위",
+        "rank_text": "2위",
+        "detail": "순위 유지 (2위)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "리빙코트",
+        "store_name": "나눔랩",
+        "status": "유지",
+        "prev_rank": 7,
+        "current_rank": 7,
+        "prev_text": "7위",
+        "rank_text": "7위",
+        "detail": "순위 유지 (7위)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "나눔랩 코팅제",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "유리막코팅제",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "나눔랩 세정제",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "세차 관리제",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "자동차 유리막코팅",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "셀프 유리막코팅제",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "차량용 유리막코팅",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "리빙코트 처음 사용법",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "리빙코트 원목",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "나무 가구 실내코팅",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "가구 리빙코트 방법",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "가구코팅 가성비",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "원목 리빙코트",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "가구코팅 광택",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "실내코팅 비추천 이유",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "가구코팅 DIY",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "가구코팅 주방",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "가구코팅 추천",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "가구코팅 가격 비교",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "욕실 가구코팅",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "실내코팅 원목",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "가구코팅 욕실",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "셀프 퍼마코트 순서",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "신차 자동차코팅제",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "유리막코팅 지속 기간",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "퍼마코트 가격 비교",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "퍼마코트 직접 해봤어요",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "자동차코팅제 직접",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "중고차 퍼마코트",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "퍼마코트 사용 후기",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "쉬운 자동차코팅제",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "쉬운 자동차 코팅제 추천",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "유리막코팅 가격 비교",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "효과 자동차 코팅제 추천",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "자동차코팅제 직접 해봤어요",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "유리막코팅 가성비",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "자동차코팅제 가성비",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "중고차 차량코팅제",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "셀프 차 코팅",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "쉬운 차량코팅제",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "유리막코팅제 가격 비교",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "차량코팅제 직접",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "신차 차 코팅",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "후기 유리막코팅제",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "차량코팅제 어떤게 좋아요",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "유리막코팅제 브랜드 비교",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "자동차코팅제 효과 좋은",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      },
+      {
+        "keyword": "유리막코팅제 장마철",
+        "store_name": "나눔랩",
+        "status": "미발견",
+        "prev_rank": 999,
+        "current_rank": null,
+        "prev_text": "999위",
+        "rank_text": "미발견",
+        "detail": "999위 → 미발견 (520위 초과)",
+        "tasks": [
+          "네이버 쇼핑 모바일 검색 순위 조회"
+        ]
+      }
+    ],
+    "improved": 0,
+    "declined": 0,
+    "unchanged": 52,
+    "completed_at": "2026-06-25 15:59"
+  },
+  "ok": true
+}

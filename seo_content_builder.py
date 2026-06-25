@@ -59,20 +59,37 @@ def _abcd_product_detail(keyword, product_name, brand):
 
 
 def _blog_review(keyword, product_name, brand):
+    keywords = ["자동차코팅제", "셀프 유리막 코팅", "듀라코트 리빙코트"]
+    if keyword and keyword not in keywords:
+        keywords.insert(0, keyword)
+    h1 = f"{product_name} — {keyword} 셀프 코팅 후기"
+    meta = (
+        f"{brand} {product_name} {keyword} 사용 후기. "
+        f"자동차코팅제, 셀프 유리막 코팅, 듀라코트 리빙코트 비교와 "
+        f"초보자 DIY 코팅 가이드를 정리했습니다."
+    )
+    meta = meta[:160] if len(meta) <= 160 else meta[:157] + "…"
+    body = (
+        f"# {h1}\n\n"
+        f"{brand} {product_name}로 **{keyword}**를 직접 시공해 본 후기입니다.\n"
+        f"**자동차코팅제**, **셀프 유리막 코팅**, **듀라코트 리빙코트**를 함께 비교하며\n"
+        f"차량·가구 관리에 도움이 되는 팁을 공유합니다.\n\n"
+        f"## 왜 {keyword}를 선택했나요\n"
+        f"세차·가구 관리 비용을 줄이면서 광택과 발수 효과를 원하셨다면 셀프 코팅이 합리적입니다.\n\n"
+        f"## 사용 과정\n"
+        f"1. 세척·건조\n2. 균일 도포\n3. 경화·마무리\n\n"
+        f"## 한 달 사용 소감\n"
+        f"발수감과 광택 유지가 눈에 띄었습니다. 상세페이지 링크는 글 하단에 배치하세요.\n\n"
+        f"## 총평\n"
+        f"자동차코팅제와 듀라코트 리빙코트를 검색하시는 분들께 경험을 공유합니다."
+    )
     return {
         "workflow": "blog_review",
-        "title": f"[직접 써봤어요] {keyword} 후기 — {product_name}",
-        "body": (
-            f"## 왜 {keyword}를 알아보게 됐나요\n"
-            f"세차 후 금방 다시 흐려지는 게 스트레스였습니다.\n\n"
-            f"## {brand} {product_name} 사용 과정\n"
-            f"1. 세차 후 물기 제거\n2. 균일 도포\n3. 24시간 경화\n\n"
-            f"## 한 달 사용 소감\n"
-            f"발수감과 광택 유지가 눈에 띄었습니다. "
-            f"상세페이지 링크는 글 하단에 배치하세요.\n\n"
-            f"## 총평\n"
-            f"{keyword} 검색하시는 분들에게 과장 없이 경험을 공유하는 톤이 효과적입니다."
-        ),
+        "title": h1,
+        "h1": h1,
+        "meta_description": meta,
+        "body": body,
+        "seo_keywords": keywords,
     }
 
 

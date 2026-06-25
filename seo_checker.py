@@ -189,21 +189,51 @@ def audit_page(url, page_type="page", target_keywords=None):
     }
 
 
+def _product_id_from_url(url: str) -> str:
+    try:
+        parts = urlparse(url).path.strip("/").split("/")
+        if len(parts) >= 3 and parts[-2] == "products":
+            return parts[-1]
+    except Exception:
+        pass
+    return ""
+
+
+def _keywords_for_product(config: dict, product_id: str) -> list[str]:
+    seo = (config.get("product_seo") or {}).get(product_id, {})
+    kws = list(seo.get("keywords") or [])
+    if kws:
+        return kws
+    return [
+        k.get("keyword", "")
+        for k in config.get("keywords", [])
+        if str(k.get("product_id", "")) == product_id and k.get("keyword")
+    ][:5]
+
+
+def _keywords_for_blog(config: dict, blog_url: str) -> list[str]:
+    seo = (config.get("blog_seo") or {}).get(blog_url, {})
+    return list(seo.get("keywords") or [])
+
+
 def run_full_audit(logger=None):
     config = load_config()
-    keywords = [k.get("keyword", "") for k in config.get("keywords", []) if k.get("keyword")]
+    default_keywords = [k.get("keyword", "") for k in config.get("keywords", []) if k.get("keyword")]
 
     results = {"products": [], "blogs": [], "summary": {}}
 
     for url in config.get("product_urls", []):
         if logger:
             logger(f"🔎 상품 페이지 SEO 점검: {url}")
-        results["products"].append(audit_page(url, "product", keywords))
+        pid = _product_id_from_url(url)
+        kws = _keywords_for_product(config, pid) or default_keywords[:5]
+        results["products"].append(audit_page(url, "product", kws))
 
     for url in config.get("blog_urls", []):
         if logger:
             logger(f"🔎 블로그 SEO 점검: {url}")
-        results["blogs"].append(audit_page(url, "blog", keywords))
+        kws = _keywords_for_blog(config, url) or default_keywords[:5]
+        results["blogs"].append(audit_page(url, "blog", kws))
 
     all_pages = results["products"] + results["blogs"]
     ok_pages = [p for p in all_pages if p.get("success")]
@@ -216,23 +246,77 @@ def run_full_audit(logger=None):
         "failed": len(failed),
         "average_score": avg,
         "completed_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "recommendations": _build_recommendations(all_pages),
+        "recommendations": _build_recommendations(all_pages, config),
     }
 
     _save_audit_history(results)
     return results
 
 
-def _build_recommendations(pages):
+def _build_recommendations(pages, config=None):
+    config = config or load_config()
+    product_seo = config.get("product_seo") or {}
+    blog_seo = config.get("blog_seo") or {}
     recs = []
+
     for page in pages:
         if not page.get("success"):
             recs.append(f"{page['url']}: 페이지 접근 실패 — URL 확인 필요")
             continue
+
+        url = page.get("url", "")
+        failed = {c["name"]: c for c in page.get("checks", []) if not c["passed"]}
+
+        if page.get("page_type") == "product":
+            pid = _product_id_from_url(url)
+            seo = product_seo.get(pid, {})
+            name = seo.get("name") or pid
+            if "메타 설명(description)" in failed:
+                meta = (seo.get("meta_description") or "").strip()
+                if meta:
+                    recs.append(
+                        f"[product] {name} — 스마트스토어센터 → SEO설정에 메타 설명 붙여넣기: 「{meta}」"
+                    )
+                else:
+                    recs.append(f"[product] {name} — 스마트스토어센터 → SEO설정에 메타 설명 추가 필요")
+            for check_name, check in failed.items():
+                if check_name == "메타 설명(description)":
+                    continue
+                recs.append(f"[product] {check_name}: {check['message']}")
+            continue
+
+        if page.get("page_type") == "blog":
+            seo = blog_seo.get(url, {})
+            label = seo.get("label") or url
+            if "메타 설명(description)" in failed:
+                meta = (seo.get("meta_description") or "").strip()
+                if meta:
+                    recs.append(
+                        f"[blog] {label} — 블로그 설정 → 메타 설명 붙여넣기 ({len(meta)}자): 「{meta}」"
+                    )
+            if "H1 태그" in failed:
+                h1 = seo.get("h1", "")
+                if h1:
+                    recs.append(
+                        f"[blog] {label} — H1을 1개만 사용: 「{h1}」 (초안: blog_drafts/seo_fix_{label}.md)"
+                    )
+            if "타겟 키워드 포함" in failed:
+                kws = seo.get("keywords") or []
+                if kws:
+                    recs.append(
+                        f"[blog] {label} — 본문에 키워드 포함: {', '.join(kws)} (초안 파일 참고)"
+                    )
+            for check_name, check in failed.items():
+                if check_name in ("메타 설명(description)", "H1 태그", "타겟 키워드 포함"):
+                    continue
+                recs.append(f"[blog] {check_name}: {check['message']}")
+            continue
+
         for check in page.get("checks", []):
             if not check["passed"]:
                 recs.append(f"[{page['page_type']}] {check['name']}: {check['message']}")
-    return recs[:15]
+
+    return recs[:20]
 
 
 def _save_audit_history(results):

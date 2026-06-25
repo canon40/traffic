@@ -262,6 +262,24 @@ def api_content_generate():
     return jsonify(result)
 
 
+@app.route("/api/seo-fixes", methods=["GET", "POST"])
+def api_seo_fixes():
+    from seo_fixes import run as generate_seo_fixes
+
+    manifest = generate_seo_fixes()
+    add_log("📋 SEO 붙여넣기 가이드·블로그 초안 생성 완료")
+    return jsonify({"success": True, **manifest})
+
+
+@app.route("/api/seo-fixes/guide")
+def api_seo_fixes_guide():
+    path = os.path.join("generated_content", "SEO_붙여넣기_가이드.md")
+    if not os.path.exists(path):
+        return jsonify({"success": False, "error": "가이드 없음. /api/seo-fixes 먼저 실행"})
+    with open(path, "r", encoding="utf-8") as f:
+        return jsonify({"success": True, "content": f.read()})
+
+
 @app.route("/manifest.json")
 def manifest():
     return send_from_directory("static", "manifest.json")
