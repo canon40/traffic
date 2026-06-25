@@ -1,6 +1,7 @@
 .venv/
 __pycache__/
 *.py[cod]
+*.pyc
 *.egg-info/
 .env
 .worker.pid
@@ -12,6 +13,17 @@ rank_trend_report.csv
 keyword_rank_log.csv
 work_log.txt
 traffic_service_result.log
+*report.json
+seo_audit_history.json
 
 # session cookies
 smartstore_user_data/
+security_vault/
+
+# generated / build artifacts
+*.csv
+*.zip
+build/
+dist/
+*.html
+!templates/*.html
