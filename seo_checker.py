@@ -122,6 +122,12 @@ def _extract_h2_like_blocks(html: str) -> list[str]:
     return [m.strip() for m in re.findall(r"<h2[^>]*>(.*?)</h2>", html, re.I | re.S)]
 
 
+def _count_captions(html: str) -> int:
+    figcaptions = _count_tags(html, "figcaption")
+    caption_blocks = len(re.findall(r'class=["\'][^"\']*caption[^"\']*["\']', html, re.I))
+    return figcaptions + caption_blocks
+
+
 def audit_page(url, page_type="page", target_keywords=None):
     target_keywords = target_keywords or []
     checks = []
@@ -232,6 +238,20 @@ def audit_page(url, page_type="page", target_keywords=None):
             "리스트 구조화",
             list_count >= 1,
             f"{'✓' if list_count >= 1 else '✗'} 리스트 {list_count}개",
+            1,
+        )
+        caption_count = _count_captions(html)
+        add_check(
+            "이미지 캡션",
+            img_total == 0 or caption_count >= 1,
+            f"{'✓' if img_total == 0 or caption_count >= 1 else '✗'} 캡션 {caption_count}개 / 이미지 {img_total}개",
+            1,
+        )
+        internal_links = len(re.findall(r'<a[^>]+href=["\'](?!https?://)[^"\']+["\']', html, re.I))
+        add_check(
+            "내부 링크 섹션",
+            internal_links >= 1 or "함께 보면 좋은 글" in text,
+            f"{'✓' if internal_links >= 1 or '함께 보면 좋은 글' in text else '✗'} 내부 링크 {internal_links}개",
             1,
         )
         intro_window = text[:200]
@@ -406,8 +426,12 @@ def _build_recommendations(pages, config=None):
                     recs.append(
                         f"[blog] {label} — 본문에 키워드 포함: {', '.join(kws)} (초안 파일 참고)"
                     )
+            if "내부 링크 섹션" in failed:
+                recs.append(f"[blog] {label} — '함께 보면 좋은 글' 내부 링크 2개 이상 추가 권장")
+            if "이미지 캡션" in failed:
+                recs.append(f"[blog] {label} — 이미지 아래 캡션 한 줄 추가 권장")
             for check_name, check in failed.items():
-                if check_name in ("메타 설명(description)", "H1 태그", "타겟 키워드 포함"):
+                if check_name in ("메타 설명(description)", "H1 태그", "타겟 키워드 포함", "내부 링크 섹션", "이미지 캡션"):
                     continue
                 recs.append(f"[blog] {check_name}: {check['message']}")
             continue

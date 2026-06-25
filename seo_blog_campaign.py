@@ -181,6 +181,15 @@ def _infer_intent(keyword, product_name):
     return "comparison"
 
 
+def _related_keywords(config, product_id, current_keyword, limit=2):
+    keywords = [
+        k["keyword"]
+        for k in config.get("keywords", [])
+        if str(k.get("product_id")) == str(product_id) and k.get("keyword") != current_keyword
+    ]
+    return keywords[:limit]
+
+
 class SeoBlogCampaignEngine:
     def __init__(self, logger=None):
         self.logger = logger or print
@@ -307,8 +316,10 @@ class SeoBlogCampaignEngine:
   </p>
 
   <br>
-  <img src="{img_url}" alt="{keyword} 사용 사례" style="max-width:100%;border-radius:12px;margin:16px 0;">
-  <p style="font-size:0.85em;color:#888;text-align:center;margin-top:-8px;">나눔랩 {product_name} 시공 전·후 비교</p>
+  <figure style="margin:16px 0;">
+    <img src="{img_url}" alt="{keyword} 사용 사례" style="max-width:100%;border-radius:12px;margin:0;">
+    <figcaption style="font-size:0.85em;color:#888;text-align:center;margin-top:8px;">나눔랩 {product_name} 시공 전·후 비교와 {keyword} 핵심 포인트</figcaption>
+  </figure>
 
   <h2 style="color:#1a1a1a;border-left:4px solid #2db400;padding-left:14px;margin-top:36px;">
     {kw_variant1} 비교 기준은 어떻게 잡는 게 좋을까?
@@ -382,6 +393,26 @@ class SeoBlogCampaignEngine:
             body = body.replace(keyword, link_html, 1)
         return body
 
+    def _append_related_posts(self, body, product, keyword):
+        pid = str(product.get("id", ""))
+        related = _related_keywords(self.config, pid, keyword)
+        if not related:
+            return body
+
+        items = []
+        for related_kw in related:
+            href = f"#related-{re.sub(r'[^a-zA-Z0-9가-힣]+', '-', related_kw)}"
+            items.append(
+                f'<li><a href="{href}" style="color:#2db400;font-weight:bold;text-decoration:underline;">{related_kw} 함께 보기</a></li>'
+            )
+        block = (
+            '<div style="background:#fafafa;border:1px solid #eee;border-radius:12px;padding:20px;margin:28px 0;">'
+            '<p style="font-weight:bold;margin:0 0 10px 0;">함께 보면 좋은 글</p>'
+            f'<ul style="margin:0;padding-left:20px;line-height:2.0;">{"".join(items)}</ul>'
+            '</div>'
+        )
+        return body + "\n" + block
+
     def generate_draft(self, product, keyword, structure=None):
         """한 상품의 특정 키워드용 블로그 초안 생성"""
         pid = str(product.get("id", ""))
@@ -398,6 +429,7 @@ class SeoBlogCampaignEngine:
 
         # 내부 링크 삽입
         body = self._inject_internal_links(body, product_url, keyword)
+        body = self._append_related_posts(body, product, keyword)
 
         return title, body, product_url
 

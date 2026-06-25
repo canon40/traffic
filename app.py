@@ -1,7 +1,7 @@
 import os
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
@@ -16,6 +16,7 @@ from seo_checker import get_latest_audit, run_full_audit
 from keyword_analyzer import analyze_keyword, suggest_keywords_for_product, analyze_all_products
 from seo_content_builder import generate_content, list_workflows, save_content
 from rank_tracker import check_product_rank
+from seo_blog_campaign import SeoBlogCampaignEngine
 
 app = Flask(__name__)
 
@@ -24,6 +25,23 @@ scheduler_running = False
 scheduler_thread = None
 stop_event = threading.Event()
 last_completion_report = None
+
+
+def build_followup_schedule(base_time=None):
+    now = base_time or datetime.now()
+    offsets = [
+        ("발행 후 6시간", 6),
+        ("발행 후 24시간", 24),
+        ("발행 후 48시간", 48),
+    ]
+    return [
+        {
+            "label": label,
+            "hours_after_publish": hours,
+            "scheduled_at": (now + timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M"),
+        }
+        for label, hours in offsets
+    ]
 
 
 def add_log(msg):
@@ -278,6 +296,28 @@ def api_seo_fixes_guide():
         return jsonify({"success": False, "error": "가이드 없음. /api/seo-fixes 먼저 실행"})
     with open(path, "r", encoding="utf-8") as f:
         return jsonify({"success": True, "content": f.read()})
+
+
+@app.route("/api/rank/followups")
+def api_rank_followups():
+    return jsonify({"success": True, "schedule": build_followup_schedule()})
+
+
+@app.route("/api/blog/regenerate", methods=["POST"])
+def api_blog_regenerate():
+    data = request.get_json(silent=True) or {}
+    product_name = data.get("product_name", "")
+    count = max(1, int(data.get("count", 3)))
+    use_report = bool(data.get("from_report", True))
+
+    add_log(f"📝 블로그 초안 재생성 요청: {product_name or '전체'} / {count}건")
+    engine = SeoBlogCampaignEngine(logger=add_log)
+    saved = engine.run_campaign(
+        target_product_name=product_name or None,
+        posts_per_product=count,
+        use_report=use_report,
+    )
+    return jsonify({"success": True, "saved": saved, "count": len(saved)})
 
 
 @app.route("/manifest.json")
