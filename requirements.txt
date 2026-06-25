@@ -1,0 +1,11 @@
+streamlit
+playwright
+playwright-stealth
+requests
+beautifulsoup4
+lxml
+matplotlib
+pandas
+xlsxwriter
+langchain-google-genai
+langchain-core

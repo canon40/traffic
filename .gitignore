@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.worker.pid
+
+# runtime logs & reports
+*.log
+report.csv
+rank_trend_report.csv
+keyword_rank_log.csv
+work_log.txt
+traffic_service_result.log
+
+# session cookies
+smartstore_user_data/
