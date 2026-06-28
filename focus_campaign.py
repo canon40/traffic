@@ -4,6 +4,7 @@
 
 인프라:
   - run_tracked_session → traffic_service (웜업→검색 Referer→SERP→상품)
+  - user_agent_pool — 세션마다 PC/Mac/iPhone/Android UA 로테이션
   - apply_wait / record_429 → traffic_rate_limit (429·시간당 한도)
   - 키워드 소스: generated_content/candidate_keywords_focus.json
 
@@ -26,6 +27,7 @@ from pathlib import Path
 
 from traffic_rate_limit import apply_wait, record_429, record_session_start
 from traffic_session_log import run_tracked_session
+from user_agent_pool import pick_random_profile, profile_hint
 
 if sys.platform == "win32":
     try:
@@ -197,9 +199,10 @@ def main() -> int:
         print("세션 분포:", by_type)
         for i, t in enumerate(queue[:40], 1):
             stay = t["stay_range"]
+            ua = profile_hint(pick_random_profile())
             print(
                 f"  {i:3d}. [{t['boost_type']}] {t['keyword']} "
-                f"체류{stay[0]}-{stay[1]}s 관측={t.get('last_observed_rank', 'None')}"
+                f"체류{stay[0]}-{stay[1]}s 관측={t.get('last_observed_rank', 'None')} | {ua}"
             )
         if len(queue) > 40:
             print(f"  ... 외 {len(queue) - 40}건")
@@ -223,10 +226,11 @@ def main() -> int:
         kw = task["keyword"]
         stay_range = tuple(task["stay_range"])
         boost_type = task["boost_type"]
+        browser_profile = pick_random_profile()
 
         print(
             f"\n[{i}/{len(queue)}] [{boost_type}] '{kw}' "
-            f"체류 {stay_range[0]}-{stay_range[1]}s"
+            f"체류 {stay_range[0]}-{stay_range[1]}s | {profile_hint(browser_profile)}"
         )
 
         apply_wait(rate_cfg, logger=print)
@@ -246,6 +250,7 @@ def main() -> int:
             target_urls=target_urls,
             headless=args.headless,
             stay_range=stay_range,
+            browser_profile=browser_profile,
         )
 
         detected = bool(result.get("detected"))
@@ -258,6 +263,8 @@ def main() -> int:
                 "keyword": kw,
                 "zone": task.get("sessions_tag"),
                 "boost_type": boost_type,
+                "browser_profile": browser_profile.get("label"),
+                "user_agent_hint": profile_hint(browser_profile),
                 "weight": task.get("weight"),
                 "stay_range": list(stay_range),
                 "observed_rank": task.get("last_observed_rank"),

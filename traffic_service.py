@@ -567,6 +567,7 @@ def run_session(
     headless: bool = False,
     stay_range: tuple[int, int] = (30, 90),
     preferred_url: str = "",
+    browser_profile: dict | None = None,
 ) -> dict:
     """
     ?? ??-?? ??? ?????.
@@ -585,15 +586,22 @@ def run_session(
         "serp_rank": None,
         "dwell_seconds": None,
         "error": None,
+        "browser_profile": None,
     }
 
     with sync_playwright() as p:
-        # ?? ?? ?? (User-Agent ????)
-        device_name = random.choice(DEVICE_POOL)
-        # Playwright? ?? ??? fallback
-        device = p.devices.get(device_name) or p.devices["Galaxy S9+"]
-        context_args = {k: v for k, v in device.items() if k != "default_browser_type"}
-        log.info(f"[Device] ??? ??: {device_name}")
+        if browser_profile:
+            from user_agent_pool import context_options, profile_hint
+
+            context_args = context_options(browser_profile)
+            result["browser_profile"] = browser_profile.get("label", "custom")
+            log.info(f"[Device] UA 로테이션: {profile_hint(browser_profile)}")
+        else:
+            device_name = random.choice(DEVICE_POOL)
+            device = p.devices.get(device_name) or p.devices["Galaxy S9+"]
+            context_args = {k: v for k, v in device.items() if k != "default_browser_type"}
+            result["browser_profile"] = device_name
+            log.info(f"[Device] 기본 풀: {device_name}")
 
         browser = p.chromium.launch(
             headless=headless,
@@ -605,9 +613,9 @@ def run_session(
         )
 
         context = browser.new_context(
-            **context_args,
-            locale="ko-KR",
-            timezone_id="Asia/Seoul",
+            **{k: v for k, v in context_args.items() if k not in ("locale", "timezone_id")},
+            locale=context_args.get("locale", "ko-KR"),
+            timezone_id=context_args.get("timezone_id", "Asia/Seoul"),
         )
 
         # ?? ????

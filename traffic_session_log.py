@@ -165,6 +165,7 @@ def run_tracked_session(
         headless=headless,
         stay_range=stay_range,
         preferred_url=product_url,
+        browser_profile=kwargs.get("browser_profile"),
     )
 
     rank_after = None
@@ -202,6 +203,7 @@ def run_tracked_session(
         "product_id": product_id,
         "product_url": product_url,
         "mode": mode,
+        "browser_profile": result.get("browser_profile"),
         "work_summary": " → ".join(work_bits),
         "state_trace": trace,
         "serp_rank": result.get("serp_rank"),
