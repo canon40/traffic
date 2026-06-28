@@ -26,5 +26,5 @@ options:
   start: gunicorn -c gunicorn_conf.py app:app
 context:
   git:
-    url: https://github.com/canon4040/antigravity-traffic.git
+    url: https://github.com/canon40/traffic.git
     branch: main
