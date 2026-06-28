@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""순위 발견 키워드만 traffic_config 생성 (filter_rank_keywords.py와 동기화)."""
-from filter_rank_keywords import apply
+"""traffic_config 생성 — scan_and_apply_keyword_ranks.py 로 위임."""
+from scan_and_apply_keyword_ranks import apply_scan, scan_all
 
 if __name__ == "__main__":
-    audit = apply()
-    n = audit["summary"]["found_count"]
-    print(f"Wrote {n} keyword_tasks (순위 추적·유지 전용)")
+    items = scan_all(use_cache=True)
+    audit = apply_scan(items, record_history=False)
+    print(f"Wrote {audit['summary']['total']} keyword_tasks")

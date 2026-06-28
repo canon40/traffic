@@ -1,194 +1,804 @@
 {
-  "updated_at": "2026-06-28T17:30:26.411082",
-  "criteria": "네이버 쇼핑 API 전체 검색(약 520위) — 순위 발견 시에만 추적",
+  "updated_at": "2026-06-28T17:42:18.537831",
+  "criteria": "상품ID 기준 전체 검색(최대 70위 구간 집중 트래픽)",
+  "maintain_max_rank": 6,
   "found_rank_tracking": [
     {
-      "keyword": "듀라코트 리빙코트",
-      "product_key": "livingcoat",
-      "product_id": "10713170202",
+      "keyword": "퍼마코트 자동차 코팅제",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": 5,
+      "stored_rank": 5,
       "mode": "maintain",
-      "latest_rank": 2
+      "zone": "maintain",
+      "task_id": "퍼마코트 자동차 코팅제|12639296730"
     },
     {
       "keyword": "리빙코트",
       "product_key": "livingcoat",
       "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": 13,
+      "stored_rank": 13,
+      "mode": "boost",
+      "zone": "hot",
+      "task_id": "리빙코트|10713170202"
+    },
+    {
+      "keyword": "듀라코트 리빙코트",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": 6,
+      "stored_rank": 6,
       "mode": "maintain",
-      "latest_rank": 13
+      "zone": "maintain",
+      "task_id": "듀라코트 리빙코트|10713170202"
     }
   ],
-  "removed_from_rank_tracking": [
-    "가구 리빙코트 방법",
-    "가구코팅 DIY",
-    "가구코팅 가격 비교",
-    "가구코팅 가성비",
-    "가구코팅 광택",
-    "가구코팅 욕실",
-    "가구코팅 주방",
-    "가구코팅 추천",
-    "나눔랩 세정제",
-    "나눔랩 코팅제",
-    "나무 가구 실내코팅",
-    "리빙코트 원목",
-    "리빙코트 처음 사용법",
-    "세차 관리제",
-    "셀프 유리막 코팅",
-    "셀프 유리막코팅제",
-    "셀프 차 코팅",
-    "셀프 퍼마코트 순서",
-    "쉬운 자동차 코팅제 추천",
-    "쉬운 자동차코팅제",
-    "쉬운 차량코팅제",
-    "신차 자동차코팅제",
-    "신차 차 코팅",
-    "실내코팅 비추천 이유",
-    "실내코팅 원목",
-    "욕실 가구코팅",
-    "원목 리빙코트",
-    "유리막코팅 가격 비교",
-    "유리막코팅 가성비",
-    "유리막코팅 지속 기간",
-    "유리막코팅제",
-    "유리막코팅제 가격 비교",
-    "유리막코팅제 브랜드 비교",
-    "유리막코팅제 장마철",
-    "자동차 유리막코팅",
-    "자동차코팅제",
-    "자동차코팅제 가성비",
-    "자동차코팅제 직접",
-    "자동차코팅제 직접 해봤어요",
-    "자동차코팅제 효과 좋은",
-    "중고차 차량코팅제",
-    "중고차 퍼마코트",
-    "차량용 유리막코팅",
-    "차량코팅제 어떤게 좋아요",
-    "차량코팅제 직접",
-    "퍼마코트 가격 비교",
-    "퍼마코트 사용 후기",
-    "퍼마코트 직접 해봤어요",
-    "효과 자동차 코팅제 추천",
-    "후기 유리막코팅제"
+  "entry_boost": [
+    {
+      "keyword": "발수코팅",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "발수코팅|12639296730"
+    },
+    {
+      "keyword": "광택",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "광택|12639296730"
+    },
+    {
+      "keyword": "차량관리",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "차량관리|12639296730"
+    },
+    {
+      "keyword": "자동차코팅",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "자동차코팅|12639296730"
+    },
+    {
+      "keyword": "유리막",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "유리막|12639296730"
+    },
+    {
+      "keyword": "셀프코팅",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "셀프코팅|12639296730"
+    },
+    {
+      "keyword": "나눔랩",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "나눔랩|12639296730"
+    },
+    {
+      "keyword": "셀프 유리막 코팅",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "셀프 유리막 코팅|12639296730"
+    },
+    {
+      "keyword": "퍼마코트 사용 후기",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "퍼마코트 사용 후기|12639296730"
+    },
+    {
+      "keyword": "자동차코팅제",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "자동차코팅제|12639296730"
+    },
+    {
+      "keyword": "셀프 퍼마코트 순서",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "셀프 퍼마코트 순서|12639296730"
+    },
+    {
+      "keyword": "신차 자동차코팅제",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "신차 자동차코팅제|12639296730"
+    },
+    {
+      "keyword": "유리막코팅 지속 기간",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "유리막코팅 지속 기간|12639296730"
+    },
+    {
+      "keyword": "퍼마코트 가격 비교",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "퍼마코트 가격 비교|12639296730"
+    },
+    {
+      "keyword": "퍼마코트 직접 해봤어요",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "퍼마코트 직접 해봤어요|12639296730"
+    },
+    {
+      "keyword": "자동차코팅제 직접",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "자동차코팅제 직접|12639296730"
+    },
+    {
+      "keyword": "중고차 퍼마코트",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "중고차 퍼마코트|12639296730"
+    },
+    {
+      "keyword": "쉬운 자동차코팅제",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "쉬운 자동차코팅제|12639296730"
+    },
+    {
+      "keyword": "쉬운 자동차 코팅제 추천",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "쉬운 자동차 코팅제 추천|12639296730"
+    },
+    {
+      "keyword": "유리막코팅 가격 비교",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "유리막코팅 가격 비교|12639296730"
+    },
+    {
+      "keyword": "효과 자동차 코팅제 추천",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "효과 자동차 코팅제 추천|12639296730"
+    },
+    {
+      "keyword": "자동차코팅제 직접 해봤어요",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "자동차코팅제 직접 해봤어요|12639296730"
+    },
+    {
+      "keyword": "유리막코팅 가성비",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "유리막코팅 가성비|12639296730"
+    },
+    {
+      "keyword": "자동차코팅제 가성비",
+      "product_key": "permacoat",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "자동차코팅제 가성비|12639296730"
+    },
+    {
+      "keyword": "가구코팅 추천",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "가구코팅 추천|10713170202"
+    },
+    {
+      "keyword": "리빙코트 처음 사용법",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "리빙코트 처음 사용법|10713170202"
+    },
+    {
+      "keyword": "리빙코트 원목",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "리빙코트 원목|10713170202"
+    },
+    {
+      "keyword": "나무 가구 실내코팅",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "나무 가구 실내코팅|10713170202"
+    },
+    {
+      "keyword": "가구 리빙코트 방법",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "가구 리빙코트 방법|10713170202"
+    },
+    {
+      "keyword": "가구코팅 가성비",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "가구코팅 가성비|10713170202"
+    },
+    {
+      "keyword": "원목 리빙코트",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "원목 리빙코트|10713170202"
+    },
+    {
+      "keyword": "가구코팅 광택",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "가구코팅 광택|10713170202"
+    },
+    {
+      "keyword": "실내코팅 비추천 이유",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "실내코팅 비추천 이유|10713170202"
+    },
+    {
+      "keyword": "가구코팅 DIY",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "가구코팅 DIY|10713170202"
+    },
+    {
+      "keyword": "가구코팅 주방",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "가구코팅 주방|10713170202"
+    },
+    {
+      "keyword": "가구코팅 가격 비교",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "가구코팅 가격 비교|10713170202"
+    },
+    {
+      "keyword": "욕실 가구코팅",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "욕실 가구코팅|10713170202"
+    },
+    {
+      "keyword": "실내코팅 원목",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "실내코팅 원목|10713170202"
+    },
+    {
+      "keyword": "가구코팅 욕실",
+      "product_key": "livingcoat",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "가구코팅 욕실|10713170202"
+    },
+    {
+      "keyword": "나눔랩 코팅제",
+      "product_key": "coating_a",
+      "product_id": "12808820913",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12808820913",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "나눔랩 코팅제|12808820913"
+    },
+    {
+      "keyword": "유리막코팅제",
+      "product_key": "coating_a",
+      "product_id": "12808820913",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12808820913",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "유리막코팅제|12808820913"
+    },
+    {
+      "keyword": "나눔랩 세정제",
+      "product_key": "cleaner",
+      "product_id": "12808787263",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12808787263",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "나눔랩 세정제|12808787263"
+    },
+    {
+      "keyword": "세차 관리제",
+      "product_key": "cleaner",
+      "product_id": "12808787263",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12808787263",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "세차 관리제|12808787263"
+    },
+    {
+      "keyword": "나눔랩 코팅제",
+      "product_key": "coating_c",
+      "product_id": "12809532969",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12809532969",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "나눔랩 코팅제|12809532969"
+    },
+    {
+      "keyword": "자동차 유리막코팅",
+      "product_key": "coating_c",
+      "product_id": "12809532969",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12809532969",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "자동차 유리막코팅|12809532969"
+    },
+    {
+      "keyword": "나눔랩 코팅제",
+      "product_key": "coating_d",
+      "product_id": "12809541448",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12809541448",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "나눔랩 코팅제|12809541448"
+    },
+    {
+      "keyword": "셀프 유리막코팅제",
+      "product_key": "coating_d",
+      "product_id": "12809541448",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12809541448",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "셀프 유리막코팅제|12809541448"
+    },
+    {
+      "keyword": "나눔랩 코팅제",
+      "product_key": "coating_b",
+      "product_id": "12809519826",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12809519826",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "나눔랩 코팅제|12809519826"
+    },
+    {
+      "keyword": "유리막코팅제",
+      "product_key": "coating_b",
+      "product_id": "12809519826",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12809519826",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "유리막코팅제|12809519826"
+    },
+    {
+      "keyword": "나눔랩 코팅제",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "나눔랩 코팅제|12634187514"
+    },
+    {
+      "keyword": "차량용 유리막코팅",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "차량용 유리막코팅|12634187514"
+    },
+    {
+      "keyword": "신차 자동차코팅제",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "신차 자동차코팅제|12634187514"
+    },
+    {
+      "keyword": "중고차 차량코팅제",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "중고차 차량코팅제|12634187514"
+    },
+    {
+      "keyword": "셀프 차 코팅",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "셀프 차 코팅|12634187514"
+    },
+    {
+      "keyword": "쉬운 차량코팅제",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "쉬운 차량코팅제|12634187514"
+    },
+    {
+      "keyword": "유리막코팅제 가격 비교",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "유리막코팅제 가격 비교|12634187514"
+    },
+    {
+      "keyword": "자동차코팅제 직접",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "자동차코팅제 직접|12634187514"
+    },
+    {
+      "keyword": "차량코팅제 직접",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "차량코팅제 직접|12634187514"
+    },
+    {
+      "keyword": "쉬운 자동차코팅제",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "쉬운 자동차코팅제|12634187514"
+    },
+    {
+      "keyword": "신차 차 코팅",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "신차 차 코팅|12634187514"
+    },
+    {
+      "keyword": "후기 유리막코팅제",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "후기 유리막코팅제|12634187514"
+    },
+    {
+      "keyword": "차량코팅제 어떤게 좋아요",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "차량코팅제 어떤게 좋아요|12634187514"
+    },
+    {
+      "keyword": "유리막코팅제 브랜드 비교",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "유리막코팅제 브랜드 비교|12634187514"
+    },
+    {
+      "keyword": "자동차코팅제 직접 해봤어요",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "자동차코팅제 직접 해봤어요|12634187514"
+    },
+    {
+      "keyword": "자동차코팅제 효과 좋은",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "자동차코팅제 효과 좋은|12634187514"
+    },
+    {
+      "keyword": "유리막코팅제 장마철",
+      "product_key": "coating_general",
+      "product_id": "12634187514",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "rank": null,
+      "stored_rank": 999,
+      "mode": "boost",
+      "zone": "entry",
+      "task_id": "유리막코팅제 장마철|12634187514"
+    }
   ],
-  "archived_traffic_zones": {
-    "hot_zone": [
-      {
-        "keyword": "리빙코트 원목",
-        "product_id": "10713170202",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
-        "last_observed_rank": 11,
-        "priority": 12,
-        "zone": "hot"
-      },
-      {
-        "keyword": "나눔랩 세정제",
-        "product_id": "12808787263",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/12808787263",
-        "last_observed_rank": 21,
-        "priority": 11,
-        "zone": "hot"
-      }
-    ],
-    "candidate_zone": [
-      {
-        "keyword": "신차 자동차코팅제",
-        "product_id": "12639296730",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
-        "last_observed_rank": 51,
-        "priority": 10,
-        "zone": "candidate"
-      },
-      {
-        "keyword": "차량코팅제 어떤게 좋아요",
-        "product_id": "12634187514",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
-        "last_observed_rank": 53,
-        "priority": 10,
-        "zone": "candidate"
-      },
-      {
-        "keyword": "자동차코팅제 직접 해봤어요",
-        "product_id": "12634187514",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
-        "last_observed_rank": 55,
-        "priority": 10,
-        "zone": "candidate"
-      },
-      {
-        "keyword": "자동차코팅제 직접 해봤어요",
-        "product_id": "12639296730",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
-        "last_observed_rank": 53,
-        "priority": 10,
-        "zone": "candidate"
-      },
-      {
-        "keyword": "유리막코팅제 브랜드 비교",
-        "product_id": "12634187514",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
-        "last_observed_rank": 62,
-        "priority": 9,
-        "zone": "candidate"
-      },
-      {
-        "keyword": "자동차코팅제 가성비",
-        "product_id": "12639296730",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
-        "last_observed_rank": 62,
-        "priority": 9,
-        "zone": "candidate"
-      },
-      {
-        "keyword": "유리막코팅제 장마철",
-        "product_id": "12634187514",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
-        "last_observed_rank": 64,
-        "priority": 9,
-        "zone": "candidate"
-      },
-      {
-        "keyword": "후기 유리막코팅제",
-        "product_id": "12634187514",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
-        "last_observed_rank": 64,
-        "priority": 9,
-        "zone": "candidate"
-      },
-      {
-        "keyword": "가구코팅 추천",
-        "product_id": "10713170202",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
-        "last_observed_rank": 64,
-        "priority": 9,
-        "zone": "candidate"
-      },
-      {
-        "keyword": "자동차코팅제 직접",
-        "product_id": "12634187514",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
-        "last_observed_rank": 67,
-        "priority": 9,
-        "zone": "candidate"
-      },
-      {
-        "keyword": "발수코팅",
-        "product_id": "12639296730",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
-        "last_observed_rank": 70,
-        "priority": 9,
-        "zone": "candidate"
-      },
-      {
-        "keyword": "가구코팅 광택",
-        "product_id": "10713170202",
-        "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
-        "last_observed_rank": 70,
-        "priority": 9,
-        "zone": "candidate"
-      }
-    ]
-  },
+  "hot_zone": [
+    {
+      "keyword": "리빙코트",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "last_observed_rank": 13,
+      "priority": 12
+    }
+  ],
+  "candidate_zone": [],
+  "maintain": [
+    {
+      "keyword": "퍼마코트 자동차 코팅제",
+      "product_id": "12639296730",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
+      "last_observed_rank": 5,
+      "priority": 3,
+      "sessions_per_cycle": 1
+    },
+    {
+      "keyword": "듀라코트 리빙코트",
+      "product_id": "10713170202",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
+      "last_observed_rank": 6,
+      "priority": 3,
+      "sessions_per_cycle": 1
+    }
+  ],
   "summary": {
-    "found_count": 2,
-    "removed_count": 50
+    "total": 69,
+    "found": 3,
+    "maintain": 2,
+    "hot": 1,
+    "candidate": 0,
+    "entry": 66
   }
 }

@@ -25,10 +25,21 @@ def load_focus() -> dict:
         return json.load(f)
 
 
-def build_queue(data: dict, hot_sessions: int = 2, candidate_sessions: int = 1) -> list[dict]:
+def build_queue(data: dict, hot_sessions: int = 2, candidate_sessions: int = 1, entry_sessions: int = 1) -> list[dict]:
     queue: list[dict] = []
+    entry = sorted(data.get("entry_priority", []), key=lambda x: -x.get("priority", 0))
     hot = sorted(data.get("hot_zone", []), key=lambda x: -x.get("priority", 0))
     cand = sorted(data.get("candidate_zone", []), key=lambda x: -x.get("priority", 0))
+
+    for item in entry:
+        url = item.get("product_url") or (
+            f"https://smartstore.naver.com/nanumlab/products/{item['product_id']}"
+            if item.get("product_id")
+            else ""
+        )
+        for _ in range(entry_sessions):
+            queue.append({**item, "product_url": url, "sessions_tag": "entry"})
+    random.shuffle(queue)
 
     for item in hot:
         for _ in range(hot_sessions):
