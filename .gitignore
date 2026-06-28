@@ -31,3 +31,7 @@ build/
 dist/
 *.html
 !templates/*.html
+
+# generated_content — 로컬 스냅샷·리포트 (원격 제외)
+generated_content/daily_rank_*.json
+generated_content/traffic_campaign_report.md
