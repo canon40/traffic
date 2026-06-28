@@ -2,7 +2,9 @@ import csv
 import json
 import os
 import re
-from datetime import datetime
+from collections import defaultdict
+from datetime import datetime, timedelta
+from pathlib import Path
 from urllib.parse import quote
 
 import requests
@@ -10,6 +12,234 @@ import requests
 from app_resources import get_storage_dir
 
 HISTORY_HEADERS = ["날짜", "키워드", "스토어명", "순위", "이전순위", "변동", "작업유형", "상세"]
+NOT_FOUND_RANK = 999
+
+
+def _parse_history_dt(value: str) -> datetime | None:
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(value.strip(), fmt)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _parse_rank(value) -> int | None:
+    try:
+        rank = int(value)
+    except (TypeError, ValueError):
+        return None
+    return rank
+
+
+def rank_label(rank: int | None) -> str:
+    if rank is None:
+        return "기록 없음"
+    if rank >= NOT_FOUND_RANK:
+        return "미발견"
+    return f"{rank}위"
+
+
+def _rank_change_status(start_rank: int | None, end_rank: int | None) -> str:
+    if start_rank is None or end_rank is None:
+        return "기록부족"
+    start_nf = start_rank >= NOT_FOUND_RANK
+    end_nf = end_rank >= NOT_FOUND_RANK
+    if start_nf and end_nf:
+        return "미발견_유지"
+    if start_nf and not end_nf:
+        return "신규진입"
+    if not start_nf and end_nf:
+        return "이탈"
+    delta = start_rank - end_rank
+    if delta > 0:
+        return "상승"
+    if delta < 0:
+        return "하락"
+    return "유지"
+
+
+def build_weekly_rank_report(days: int = 7) -> dict:
+    """
+    기간 내 키워드별 주간 순위 변화.
+    - week_start_rank: 기간 직전 마지막 기록 (없으면 기간 내 첫 기록)
+    - week_end_rank: 기간 내 마지막 기록
+    """
+    history = get_history()
+    now = datetime.now()
+    period_start = now - timedelta(days=days)
+
+    if not history:
+        return {
+            "period_days": days,
+            "period_start": period_start.strftime("%Y-%m-%d"),
+            "period_end": now.strftime("%Y-%m-%d"),
+            "generated_at": now.strftime("%Y-%m-%d %H:%M"),
+            "summary": "순위 기록이 없습니다.",
+            "items": [],
+            "improved": 0,
+            "declined": 0,
+            "unchanged": 0,
+            "entered": 0,
+            "dropped": 0,
+        }
+
+    grouped: dict[tuple[str, str], list[tuple[datetime, dict]]] = defaultdict(list)
+    for row in history:
+        dt = _parse_history_dt(row.get("날짜", ""))
+        if not dt:
+            continue
+        key = (row.get("키워드", ""), row.get("스토어명", ""))
+        grouped[key].append((dt, row))
+
+    items = []
+    improved = declined = unchanged = entered = dropped = 0
+
+    for (keyword, store_name), records in grouped.items():
+        records.sort(key=lambda x: x[0])
+        before = [(dt, row) for dt, row in records if dt < period_start]
+        in_period = [(dt, row) for dt, row in records if dt >= period_start]
+        if not in_period:
+            continue
+
+        if before:
+            start_rank = _parse_rank(before[-1][1].get("순위"))
+            start_at = before[-1][0].strftime("%Y-%m-%d %H:%M")
+        else:
+            start_rank = _parse_rank(in_period[0][1].get("순위"))
+            start_at = in_period[0][0].strftime("%Y-%m-%d %H:%M")
+
+        end_rank = _parse_rank(in_period[-1][1].get("순위"))
+        end_at = in_period[-1][0].strftime("%Y-%m-%d %H:%M")
+
+        period_ranks = [_parse_rank(row.get("순위")) for _, row in in_period]
+        found_ranks = [r for r in period_ranks if r is not None and r < NOT_FOUND_RANK]
+        best_rank = min(found_ranks) if found_ranks else None
+        worst_rank = max(found_ranks) if found_ranks else None
+
+        change = None
+        if start_rank is not None and end_rank is not None:
+            change = start_rank - end_rank
+
+        status = _rank_change_status(start_rank, end_rank)
+        if status == "상승":
+            improved += 1
+        elif status == "하락":
+            declined += 1
+        elif status == "신규진입":
+            entered += 1
+        elif status == "이탈":
+            dropped += 1
+        else:
+            unchanged += 1
+
+        if change is None:
+            change_text = "-"
+        elif change > 0:
+            change_text = f"▲{change}"
+        elif change < 0:
+            change_text = f"▼{abs(change)}"
+        else:
+            change_text = "0"
+
+        items.append({
+            "keyword": keyword,
+            "store_name": store_name,
+            "week_start_rank": start_rank,
+            "week_end_rank": end_rank,
+            "week_start_text": rank_label(start_rank),
+            "week_end_text": rank_label(end_rank),
+            "change": change,
+            "change_text": change_text,
+            "status": status,
+            "best_rank": best_rank,
+            "worst_rank": worst_rank,
+            "best_text": rank_label(best_rank),
+            "observations": len(in_period),
+            "start_at": start_at,
+            "end_at": end_at,
+        })
+
+    items.sort(
+        key=lambda x: (
+            0 if x["status"] == "상승" else 1 if x["status"] == "신규진입" else 2,
+            -(x["change"] or 0),
+            x["week_end_rank"] if x["week_end_rank"] is not None else NOT_FOUND_RANK,
+        )
+    )
+
+    summary = (
+        f"최근 {days}일 - 상승 {improved}건, 하락 {declined}건, "
+        f"신규진입 {entered}건, 이탈 {dropped}건, 유지/미발견 {unchanged}건"
+    )
+
+    return {
+        "period_days": days,
+        "period_start": period_start.strftime("%Y-%m-%d"),
+        "period_end": now.strftime("%Y-%m-%d"),
+        "generated_at": now.strftime("%Y-%m-%d %H:%M"),
+        "summary": summary,
+        "items": items,
+        "improved": improved,
+        "declined": declined,
+        "unchanged": unchanged,
+        "entered": entered,
+        "dropped": dropped,
+    }
+
+
+def format_weekly_report_markdown(report: dict) -> str:
+    lines = [
+        "### 📅 주간 순위 리포트",
+        f"- 기간: {report.get('period_start')} ~ {report.get('period_end')} ({report.get('period_days')}일)",
+        f"- 생성: {report.get('generated_at')}",
+        f"- {report.get('summary')}",
+        "",
+        "| 키워드 | 주초 | 주말 | 변동 | 기간 최고 | 상태 |",
+        "|--------|------|------|------|-----------|------|",
+    ]
+    for item in report.get("items", []):
+        lines.append(
+            f"| {item['keyword']} | {item['week_start_text']} | {item['week_end_text']} | "
+            f"{item['change_text']} | {item['best_text']} | {item['status']} |"
+        )
+    if not report.get("items"):
+        lines.append("| (기록 없음) | - | - | - | - | - |")
+    return "\n".join(lines)
+
+
+def save_weekly_report(report: dict, out_dir: str | os.PathLike | None = None) -> tuple[str, str]:
+    base = Path(out_dir) if out_dir else Path(os.getcwd()) / "generated_content"
+    base.mkdir(parents=True, exist_ok=True)
+    json_path = base / "weekly_rank_report.json"
+    csv_path = base / "weekly_rank_report.csv"
+
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, ensure_ascii=False, indent=2)
+
+    headers = [
+        "키워드", "스토어", "주초순위", "주말순위", "변동", "상태",
+        "기간최고", "기간최저", "관측횟수", "주초시각", "주말시각",
+    ]
+    with open(csv_path, "w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(headers)
+        for item in report.get("items", []):
+            writer.writerow([
+                item["keyword"],
+                item["store_name"],
+                item["week_start_rank"] if item["week_start_rank"] is not None else "",
+                item["week_end_rank"] if item["week_end_rank"] is not None else "",
+                item["change_text"],
+                item["status"],
+                item["best_rank"] if item["best_rank"] is not None else "",
+                item["worst_rank"] if item["worst_rank"] is not None else "",
+                item["observations"],
+                item["start_at"],
+                item["end_at"],
+            ])
+
+    return str(json_path), str(csv_path)
 
 # Android Chrome UA — 모바일 앱·실기기에서 네이버 응답 안정화
 MOBILE_UA = (

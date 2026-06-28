@@ -116,7 +116,16 @@ cfg = {
     "boost_sessions": 2,
     "maintain_sessions": 1,
     "max_pages": 10,
-    "stay_time_range": [45, 90],
+    "stay_time_range": [35, 55],
+    "rate_limit": {
+        "min_session_gap_sec": 120,
+        "max_sessions_per_hour": 15,
+        "cooldown_429_sec": 2700,
+        "cooldown_429_escalated_sec": 5400,
+        "escalate_after_consecutive_429": 3,
+        "batch_size": 10,
+        "batch_rest_sec": 1200,
+    },
 }
 
 Path("traffic_config.json").write_text(

@@ -79,12 +79,26 @@ class SafetyObserver:
         self._blocked: bool = False
         self._block_reason: str = ""
 
+  _IGNORE_429_IN_URL = (
+        ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".woff", ".svg",
+        "analytics", "tracking", "pixel", "beacon",
+    )
+
     def setup(self, page) -> None:
-        """???? ?? ??? ???? ?????."""
+        """응답 후킹 — 스마트스토어 본문 429만 차단 처리."""
         def _on_response(response) -> None:
-            if response.status in (403, 429):
-                self._blocked = True
-                self._block_reason = f"HTTP {response.status} from {response.url[:80]}"
+            if response.status not in (403, 429):
+                return
+            url = (response.url or "").lower()
+            if any(ext in url for ext in self._IGNORE_429_IN_URL):
+                return
+            if "smartstore.naver.com" not in url and "shopping.naver.com" not in url:
+                return
+            rtype = getattr(response.request, "resource_type", "")
+            if rtype and rtype not in ("document", "xhr", "fetch"):
+                return
+            self._blocked = True
+            self._block_reason = f"HTTP {response.status} from {response.url[:80]}"
 
         page.on("response", _on_response)
 
@@ -423,11 +437,12 @@ def handle_serp_browse(
     page: Page,
     target_store_id: str,
     target_product_id: str = "",
-) -> tuple[bool, Optional[str]]:
+) -> tuple[bool, Optional[str], Optional[int]]:
     """
     [State: SERP_BROWSE]
     SERP(?? ?? ???)?? ?? ?? ??? ?? ?????.
     target_product_id? ??? ?? ?? URL? ?? ?????.
+    반환: (발견여부, URL, SERP내 순위)
     """
     log.info("[SERP] ?? ?? ??? ?? ??")
 
@@ -463,7 +478,8 @@ def handle_serp_browse(
     )
 
     sim = HumanSimulator(page)
-    if competitor_links:
+    skip_competitors = os.environ.get("TRAFFIC_SKIP_COMPETITORS", "").lower() in ("1", "true", "yes")
+    if competitor_links and not skip_competitors:
         competitors_to_visit = random.sample(
             competitor_links, min(random.randint(1, 2), len(competitor_links))
         )
@@ -491,14 +507,19 @@ def handle_serp_browse(
 
     if target_links:
         needle = target_product_id or target_store_id
+        serp_rank: Optional[int] = None
+        for idx, href in enumerate(all_links, 1):
+            if needle in href:
+                serp_rank = idx
+                break
         target_el = page.query_selector(f'a[href*="{needle}"]')
         if target_el:
             sim.click_element(target_el)
-        return True, target_links[0]
-    return False, None
+        return True, target_links[0], serp_rank
+    return False, None, None
 
 
-def handle_target_visit(page: Page, target_url: str, stay_range: tuple[int, int] = (30, 90)) -> None:
+def handle_target_visit(page: Page, target_url: str, stay_range: tuple[int, int] = (30, 90)) -> float:
     """
     [State: TARGET_VISIT]
     ?? ?????? ??? ?? ? ??? ?? ??.
@@ -535,9 +556,7 @@ def handle_target_visit(page: Page, target_url: str, stay_range: tuple[int, int]
             elapsed += pause
 
     log.info("[Target] ?? ??")
-
-
-# ????????????????????????????????????????????????????????????????????
+    return round(stay_sec, 1)
 # ?  MAIN SESSION RUNNER                                             ?
 # ????????????????????????????????????????????????????????????????????
 
@@ -563,6 +582,8 @@ def run_session(
         "state_trace": [],
         "target_found": False,
         "target_url_visited": None,
+        "serp_rank": None,
+        "dwell_seconds": None,
         "error": None,
     }
 
@@ -631,11 +652,12 @@ def run_session(
                     state = State.SERP_BROWSE
 
                 elif state == State.SERP_BROWSE:
-                    found, href = handle_serp_browse(
+                    found, href, serp_rank = handle_serp_browse(
                         page, target_store_id, target_product_id=target_product_id
                     )
                     observer.check(page)          # ? Safety check
                     result["target_found"] = found
+                    result["serp_rank"] = serp_rank
 
                     if found and href:
                         result["target_url_visited"] = href
@@ -654,21 +676,27 @@ def run_session(
                 elif state == State.TARGET_VISIT:
                     visit_url = result["target_url_visited"]
                     if visit_url:
-                        handle_target_visit(page, visit_url, stay_range=stay_range)
+                        result["dwell_seconds"] = handle_target_visit(
+                            page, visit_url, stay_range=stay_range
+                        )
                     observer.check(page)          # ? Safety check
                     state = State.DONE
 
         except DetectionAlert as e:
-            # ?? ? ?? ? ???? ??? ?? ?????????????????
             reason = str(e)
-            result["error"] = f"[??] {reason}"
+            result["error"] = f"[차단] {reason}"
             result["detected"] = True
-            log.warning(f"?? [Safety Switch] ?? ?? ??: {reason}")
-            log.warning("   ? ?? ?? ??. ?? ?? ? ??? ??.")
-            # ??? ??? ??? ?????? ??
+            log.warning(f"[Safety] 차단 감지: {reason}")
+            if "429" in reason:
+                try:
+                    from traffic_rate_limit import record_429
+                    wait = record_429()
+                    log.warning(f"[RateLimit] 429 누적 — {wait}초 쿨다운 등록")
+                except Exception:
+                    pass
             if COOKIE_FILE.exists():
                 COOKIE_FILE.unlink()
-                log.info("[Safety] ??? ?? ?? ??")
+                log.info("[Safety] 쿠키 삭제 (세션 초기화)")
 
         except Exception as e:
             result["error"] = str(e)
@@ -681,6 +709,12 @@ def run_session(
 
     result["finished_at"] = datetime.now().isoformat()
     result["state_trace"].append("DONE")
+    if not result.get("detected") and not result.get("error"):
+        try:
+            from traffic_rate_limit import record_success
+            record_success()
+        except Exception:
+            pass
     return result
 
 

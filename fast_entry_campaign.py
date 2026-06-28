@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import time
 from datetime import datetime
 from pathlib import Path
 
-from traffic_service import run_session
+from traffic_session_log import run_tracked_session
+from traffic_rate_limit import apply_wait, load_rate_config, record_429, record_session_start, status_summary
 
 ROOT = Path(__file__).resolve().parent
 TRAFFIC_CFG = ROOT / "traffic_config.json"
@@ -63,17 +65,23 @@ def build_queue(tasks: list[dict], rounds: int, cfg: dict) -> list[dict]:
     return queue
 
 
-def wait_between_sessions(fast: bool, detected: bool) -> None:
+def wait_between_sessions(fast: bool, safe: bool, detected: bool, cfg: dict) -> None:
     if detected:
-        cooldown = random.uniform(240, 360)
-        print(f"  [cooldown] 봇 감지 → {cooldown:.0f}s 대기")
-        time.sleep(cooldown)
+        wait = record_429()
+        print(f"  [cooldown] HTTP 429 → {wait // 60}분 쿨다운 등록")
+        time.sleep(min(wait, 120))
         return
-    if fast:
-        delay = random.uniform(45, 70)
+    limits = load_rate_config(cfg)
+    if safe or not fast:
+        delay = random.uniform(
+            limits["min_session_gap_sec"] * 0.9,
+            limits["min_session_gap_sec"] * 1.3,
+        )
+    elif fast:
+        delay = random.uniform(90, 130)
     else:
-        delay = random.gauss(50, 12)
-        delay = max(25.0, delay)
+        delay = random.gauss(70, 15)
+        delay = max(60.0, delay)
     print(f"  [wait] {delay:.0f}s")
     time.sleep(delay)
 
@@ -86,12 +94,13 @@ def append_log(record: dict) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="미발견 키워드 빠른 순위 진입 캠페인")
     parser.add_argument("--headless", action="store_true", help="헤드리스 실행")
-    parser.add_argument("--rounds", type=int, default=2, help="스윕 라운드 수 (기본 2)")
-    parser.add_argument("--fast", action="store_true", default=True, help="세션 간격 단축 (기본 ON)")
-    parser.add_argument("--no-fast", action="store_true", help="세션 간격 일반 모드")
+    parser.add_argument("--rounds", type=int, default=1, help="스윕 라운드 수 (기본 1, 429 완화)")
+    parser.add_argument("--fast", action="store_true", help="간격 단축 (90~130초, 429 위험)")
+    parser.add_argument("--no-safe", action="store_true", help="안전 모드 끄기 (위험)")
     parser.add_argument("--dry-run", action="store_true", help="큐만 출력")
     args = parser.parse_args()
-    fast = args.fast and not args.no_fast
+    safe = not args.no_safe
+    fast = args.fast and not safe
 
     tasks, cfg = load_tasks()
     if not tasks:
@@ -109,7 +118,9 @@ def main() -> int:
     print(f"  시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"  키워드: 진입 {len(tasks) - len(MAINTAIN_KEYWORDS)} / 유지 {len(MAINTAIN_KEYWORDS)}")
     print(f"  큐: 총 {len(queue)}세션 (진입 {entry_cnt} + 유지 {maintain_cnt})")
-    print(f"  라운드: {args.rounds} | 간격: {'빠름(18~32s)' if fast else '일반'}")
+    mode_label = "안전(120s+)" if safe else ("빠름(90s)" if fast else "일반(70s)")
+    print(f"  라운드: {args.rounds} | 모드: {mode_label}")
+    print(f"  {status_summary(cfg)}")
     print("=" * 60)
 
     if args.dry_run:
@@ -119,6 +130,8 @@ def main() -> int:
         return 0
 
     ok = fail = 0
+    rank_tracked: set[str] = set()
+    os.environ["TRAFFIC_SKIP_COMPETITORS"] = "1" if safe else "0"
     for i, task in enumerate(queue, 1):
         kw = task["keyword"]
         preferred = task["product_url"]
@@ -126,25 +139,33 @@ def main() -> int:
         print(f"\n[{i}/{len(queue)}] [{tag}] '{kw}'")
         print("-" * 50)
 
-        result = run_session(
+        apply_wait(cfg, logger=print)
+        record_session_start()
+
+        track_rank = kw not in rank_tracked
+        if track_rank:
+            rank_tracked.add(kw)
+
+        result = run_tracked_session(
+            campaign="fast_entry",
             keyword=kw,
+            product_url=preferred,
+            mode=tag,
+            track_rank=track_rank,
             target_store_id="nanumlab",
             target_urls=target_urls,
             headless=args.headless,
             stay_range=stay_range,
-            preferred_url=preferred,
         )
 
         detected = bool(result.get("detected"))
+        status = result.get("status", "UNKNOWN")
         if result.get("target_found"):
             ok += 1
-            status = "TARGET_FOUND"
-        elif result.get("error"):
+        elif result.get("error") or detected:
             fail += 1
-            status = f"ERROR: {result['error']}"
-        else:
-            status = "FALLBACK"
 
+        # legacy log 호환
         record = {
             "at": datetime.now().isoformat(),
             "keyword": kw,
@@ -152,12 +173,16 @@ def main() -> int:
             "status": status,
             "target_found": result.get("target_found"),
             "detected": detected,
+            "session_record": result.get("session_record"),
         }
         append_log(record)
+        rec = result.get("session_record") or {}
         print(f"  → {status}")
+        if rec.get("outcome"):
+            print(f"  → {rec['outcome']}")
 
         if i < len(queue):
-            wait_between_sessions(fast, detected)
+            wait_between_sessions(fast, safe, detected, cfg)
 
     print("\n" + "=" * 60)
     print(f"완료: 성공 {ok} / 실패 {fail} / 총 {len(queue)}세션")

@@ -165,7 +165,7 @@
             <button class="tab-btn" data-tab="tab-chart">순위 그래프</button>
             <button class="tab-btn" data-tab="tab-seo">SEO 체크</button>
             <button class="tab-btn" data-tab="tab-blog">블로그</button>
-            <button class="tab-btn" data-tab="tab-report">일일 리포트</button>
+            <button class="tab-btn" data-tab="tab-report">주간·트래픽</button>
             <button class="tab-btn" data-tab="tab-logs">로그</button>
         </div>
 
@@ -190,8 +190,18 @@
 
         <div id="tab-chart" class="tab-content">
             <div class="glass-panel">
-                <h3 style="font-size:0.95rem;margin-bottom:12px;"><i class="fa-solid fa-chart-line"></i> 순위 변동 (낮을수록 상위)</h3>
-                <div style="height:260px;"><canvas id="rankingChart"></canvas></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <h3 style="font-size:0.95rem;"><i class="fa-solid fa-list-ol"></i> 키워드별 작업·순위 진행</h3>
+                    <button class="btn" style="padding:6px 12px;font-size:0.75rem;background:var(--accent-blue);" onclick="loadKeywordProgress()">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                    </button>
+                </div>
+                <div id="keywordProgressSummary" style="font-size:0.82rem;color:var(--text-sub);margin-bottom:10px;"></div>
+                <div id="keywordProgressBox"></div>
+            </div>
+            <div class="glass-panel" style="margin-top:16px;">
+                <h3 style="font-size:0.95rem;margin-bottom:12px;"><i class="fa-solid fa-chart-line"></i> 순위 추이 그래프</h3>
+                <div style="height:220px;"><canvas id="rankingChart"></canvas></div>
             </div>
         </div>
 
@@ -249,6 +259,39 @@
         <div id="tab-report" class="tab-content">
             <div class="glass-panel">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3 style="font-size:0.95rem;"><i class="fa-solid fa-bullseye"></i> 트래픽 작업 결과</h3>
+                    <div style="display:flex;gap:6px;">
+                        <select id="trafficDays" style="background:#1e293b;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 8px;font-size:0.75rem;">
+                            <option value="7">7일</option>
+                            <option value="30" selected>30일</option>
+                        </select>
+                        <button class="btn" style="padding:6px 12px;font-size:0.75rem;background:#7c3aed;" onclick="loadTrafficReport()">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="trafficSummary" style="font-size:0.82rem;color:var(--text-sub);margin-bottom:10px;"></div>
+                <div id="trafficReportBox"></div>
+            </div>
+            <div class="glass-panel" style="margin-top:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3 style="font-size:0.95rem;"><i class="fa-solid fa-calendar-week"></i> 주간 순위 (주초 → 주말)</h3>
+                    <div style="display:flex;gap:6px;">
+                        <select id="weeklyDays" style="background:#1e293b;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 8px;font-size:0.75rem;">
+                            <option value="7" selected>7일</option>
+                            <option value="14">14일</option>
+                            <option value="30">30일</option>
+                        </select>
+                        <button class="btn" style="padding:6px 12px;font-size:0.75rem;background:var(--accent-green);" onclick="loadWeeklyReport()">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="weeklySummary" style="font-size:0.82rem;color:var(--text-sub);margin-bottom:10px;"></div>
+                <div id="weeklyReportBox"></div>
+            </div>
+            <div class="glass-panel" style="margin-top:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                     <h3 style="font-size:0.95rem;"><i class="fa-solid fa-file-lines"></i> 일일 리포트</h3>
                     <button class="btn" style="padding:6px 12px;font-size:0.75rem;background:var(--accent-blue);" onclick="loadReport()">
                         <i class="fa-solid fa-arrows-rotate"></i>
@@ -292,8 +335,8 @@
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById(tabId).classList.add('active');
-            if (tabId === 'tab-chart') loadChart();
-            if (tabId === 'tab-report') loadReport();
+            if (tabId === 'tab-chart') { loadKeywordProgress(); loadChart(); }
+            if (tabId === 'tab-report') { loadTrafficReport(); loadWeeklyReport(); loadReport(); }
             if (tabId === 'tab-seo') loadLatestAudit();
             if (tabId === 'tab-blog') initBlogTab();
         }
@@ -586,6 +629,41 @@
             }
         }
 
+        async function loadKeywordProgress() {
+            const box = document.getElementById('keywordProgressBox');
+            const summary = document.getElementById('keywordProgressSummary');
+            box.innerHTML = '<div class="empty-state">로딩 중...</div>';
+            const res = await fetch('/api/keyword/progress?days=30');
+            const data = await res.json();
+            const board = data.board;
+            if (!board || !board.items || !board.items.length) {
+                summary.textContent = '';
+                box.innerHTML = '<div class="empty-state">키워드 기록 없음<br>「지금 추적」 또는 트래픽 캠페인 후 표시됩니다.</div>';
+                return;
+            }
+            summary.textContent = board.summary;
+            box.innerHTML = board.items.map(item => {
+                const cls = item.status === '상승' || item.status === '유지' ? 'up'
+                    : item.status === '하락' ? 'down'
+                    : item.status === 'SERP노출' ? '' : '';
+                const badgeCls = item.status === '상승' || item.status === '유지' ? 'badge-up'
+                    : item.status === '미진입' ? 'badge-down' : 'badge-same';
+                const traffic = item.traffic_sessions > 0
+                    ? `트래픽 ${item.traffic_sessions}회 · SERP ${item.serp_best_text}`
+                    : (item.serp_best_text !== '-' ? `SERP ${item.serp_best_text}` : '트래픽 없음');
+                return `<div class="result-card ${cls}">
+                    <div class="kw">${item.keyword}
+                        <span class="badge ${badgeCls}">${item.status}</span>
+                    </div>
+                    <div class="detail">
+                        작업전 ${item.rank_start_text} → 현재 <strong>${item.rank_current_text}</strong>
+                        (${item.change_text}) · ${traffic}
+                    </div>
+                    ${item.traffic_outcome ? `<div class="detail" style="margin-top:4px;">${item.traffic_outcome}</div>` : ''}
+                </div>`;
+            }).join('');
+        }
+
         async function loadChart() {
             const res = await fetch('/api/history');
             const data = await res.json();
@@ -617,6 +695,61 @@
                     }
                 }
             });
+        }
+
+        async function loadTrafficReport() {
+            const box = document.getElementById('trafficReportBox');
+            const summary = document.getElementById('trafficSummary');
+            const days = document.getElementById('trafficDays').value;
+            box.innerHTML = '<div class="empty-state">로딩 중...</div>';
+            const res = await fetch(`/api/traffic/report?days=${days}`);
+            const data = await res.json();
+            const report = data.report;
+            if (!report || !report.items || !report.items.length) {
+                summary.textContent = report ? report.summary : '';
+                box.innerHTML = '<div class="empty-state">트래픽 세션 기록이 없습니다.<br>캠페인 실행 후 작업·순위·결과가 표시됩니다.</div>';
+                return;
+            }
+            summary.textContent = report.summary;
+            box.innerHTML = report.items.map(item => {
+                const cls = item.result_status === '순위상승' ? 'up'
+                    : item.result_status === '순위하락' || item.result_status === '차단/오류' ? 'down' : '';
+                return `<div class="result-card ${cls}">
+                    <div class="kw">[${item.campaign}] ${item.keyword}</div>
+                    <div class="detail">
+                        ${item.rank_start_text} → ${item.rank_end_text} (${item.change_text})
+                        · SERP 최고 ${item.serp_best_text}
+                        · ${item.sessions}세션 · ${item.result_status}
+                    </div>
+                    <div class="detail" style="margin-top:4px;">${item.outcome}</div>
+                </div>`;
+            }).join('');
+        }
+
+        async function loadWeeklyReport() {
+            const box = document.getElementById('weeklyReportBox');
+            const summary = document.getElementById('weeklySummary');
+            const days = document.getElementById('weeklyDays').value;
+            box.innerHTML = '<div class="empty-state">로딩 중...</div>';
+            const res = await fetch(`/api/rank/weekly?days=${days}`);
+            const data = await res.json();
+            const report = data.report;
+            if (!report || !report.items || !report.items.length) {
+                summary.textContent = report ? report.summary : '';
+                box.innerHTML = '<div class="empty-state">기간 내 순위 기록이 없습니다.<br>「지금 추적」으로 매일 기록을 쌓으면 주초→주말 변동이 표시됩니다.</div>';
+                return;
+            }
+            summary.textContent = `${report.period_start} ~ ${report.period_end} · ${report.summary}`;
+            box.innerHTML = report.items.map(item => {
+                const cls = item.status === '상승' || item.status === '신규진입' ? 'up'
+                    : item.status === '하락' || item.status === '이탈' ? 'down' : '';
+                const badgeCls = item.status === '상승' || item.status === '신규진입' ? 'badge-up'
+                    : item.status === '하락' || item.status === '이탈' ? 'badge-down' : 'badge-same';
+                return `<div class="result-card ${cls}">
+                    <div class="kw">${item.keyword} <span class="badge ${badgeCls}">${item.status}</span></div>
+                    <div class="detail">${item.week_start_text} → ${item.week_end_text} (${item.change_text}) · 기간 최고 ${item.best_text} · ${item.observations}회 관측</div>
+                </div>`;
+            }).join('');
         }
 
         async function loadReport() {

@@ -8,6 +8,7 @@ __pycache__/
 
 # runtime logs & reports
 *.log
+*.jsonl
 report.csv
 rank_trend_report.csv
 keyword_rank_log.csv

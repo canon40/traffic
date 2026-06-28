@@ -19,8 +19,8 @@ EMBEDDED = {
 
 
 def get_storage_dir():
-    """쓰기 가능한 앱 저장소 (Android: FLET_APP_STORAGE_DATA)."""
-    data = os.environ.get("FLET_APP_STORAGE_DATA")
+    """쓰기 가능한 앱 저장소 (Android / Cloudtype DATA_DIR / 로컬)."""
+    data = os.environ.get("DATA_DIR") or os.environ.get("FLET_APP_STORAGE_DATA")
     if data:
         os.makedirs(data, exist_ok=True)
         return data

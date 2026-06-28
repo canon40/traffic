@@ -1,0 +1,34 @@
+name: Daily Rank Track (Cloud Backup)
+
+on:
+  schedule:
+    # UTC 00:30 = KST 09:30 (PC 꺼져 있어도 순위 기록)
+    - cron: "30 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  rank-track:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Run daily rank track
+        run: python daily_rank_track.py
+
+      - name: Upload rank history artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rank-data-${{ github.run_id }}
+          path: |
+            rank_history.csv
+            generated_content/daily_rank_*.json
+            generated_content/weekly_rank_report.json
+          if-no-files-found: warn

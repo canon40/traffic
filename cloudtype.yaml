@@ -1,0 +1,30 @@
+name: antigravity-traffic
+app: python@3.12
+options:
+  ports: 5000
+  healthCheck: /api/health
+  env:
+    - name: PORT
+      value: "5000"
+    - name: AUTO_START_BACKGROUND
+      value: "1"
+    - name: AUTO_START_SCHEDULER
+      value: "1"
+    - name: ENABLE_CLOUD_TRAFFIC
+      value: "0"
+    - name: ENABLE_CLOUD_RANK_SWEEP
+      value: "1"
+    - name: DAILY_RANK_HOUR
+      value: "9"
+    - name: DAILY_RANK_MINUTE
+      value: "30"
+    - name: DATA_DIR
+      value: "/data"
+    - name: GUNICORN_TIMEOUT
+      value: "3600"
+  install: pip install -r requirements.txt gunicorn
+  start: gunicorn -c gunicorn_conf.py app:app
+context:
+  git:
+    url: https://github.com/canon4040/antigravity-traffic.git
+    branch: main

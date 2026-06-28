@@ -7,9 +7,12 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 
 from rank_tracker import (
     build_completion_report,
+    build_weekly_rank_report,
+    format_weekly_report_markdown,
     get_history,
     load_config,
     save_config,
+    save_weekly_report,
     track_all_keywords,
 )
 from seo_checker import get_latest_audit, run_full_audit
@@ -18,7 +21,35 @@ from seo_content_builder import generate_content, list_workflows, save_content
 from rank_tracker import check_product_rank
 from seo_blog_campaign import SeoBlogCampaignEngine
 
+try:
+    from data_store import cloud_enabled, pull_from_cloud, push_to_cloud
+except ImportError:
+    def cloud_enabled(): return False
+    def pull_from_cloud(): return []
+    def push_to_cloud(*a, **k): return []
+
 app = Flask(__name__)
+
+_pulled = pull_from_cloud()
+if _pulled:
+    print(f"[data_store] GCS에서 복원: {', '.join(_pulled)}")
+
+_bg_bootstrapped = False
+
+
+@app.before_request
+def _bootstrap_cloud_background():
+    global _bg_bootstrapped
+    if _bg_bootstrapped:
+        return
+    if os.environ.get("AUTO_START_BACKGROUND", "").lower() not in ("1", "true", "yes"):
+        return
+    _bg_bootstrapped = True
+    try:
+        from cloud_background import start_cloud_services
+        start_cloud_services()
+    except Exception as e:
+        print(f"[cloud_background] {e}")
 
 logs_queue = []
 scheduler_running = False
@@ -73,6 +104,12 @@ def scheduler_loop():
                 add_log(f"📊 {item['keyword']}: {item.get('detail', '')}")
 
         add_log(f"✅ {report['summary']}")
+
+        try:
+            from data_store import push_to_cloud
+            push_to_cloud(("rank_history.csv",))
+        except Exception:
+            pass
 
         if cycle == 1 or cycle % 6 == 0:
             add_log("🔎 정기 SEO 체크리스트 점검 실행...")
@@ -169,6 +206,9 @@ def api_track_now():
     results = track_all_keywords(logger=add_log)
     report = build_completion_report(results)
     last_completion_report = report
+    pushed = push_to_cloud(("rank_history.csv",))
+    if pushed:
+        add_log(f"☁️ 클라우드 저장: {', '.join(pushed)}")
     add_log(f"✅ {report['summary']}")
     return jsonify({"success": True, "report": report})
 
@@ -223,6 +263,64 @@ def api_history():
 @app.route("/api/report")
 def api_report():
     return jsonify({"report": generate_daily_report()})
+
+
+@app.route("/api/rank/weekly")
+def api_rank_weekly():
+    days = request.args.get("days", 7, type=int)
+    days = max(1, min(days, 90))
+    report = build_weekly_rank_report(days=days)
+    return jsonify({
+        "success": True,
+        "report": report,
+        "markdown": format_weekly_report_markdown(report),
+    })
+
+
+@app.route("/api/rank/weekly/save", methods=["POST"])
+def api_rank_weekly_save():
+    data = request.get_json(silent=True) or {}
+    days = max(1, min(int(data.get("days", 7)), 90))
+    report = build_weekly_rank_report(days=days)
+    json_path, csv_path = save_weekly_report(report)
+    add_log(f"📅 주간 순위 리포트 저장 ({days}일)")
+    return jsonify({
+        "success": True,
+        "report": report,
+        "json_path": json_path,
+        "csv_path": csv_path,
+    })
+
+
+@app.route("/api/traffic/report")
+def api_traffic_report():
+    from traffic_session_log import build_campaign_report, format_report_markdown
+
+    days = request.args.get("days", 30, type=int)
+    days = max(1, min(days, 90))
+    report = build_campaign_report(days=days)
+    return jsonify({
+        "success": True,
+        "report": {k: v for k, v in report.items() if k != "sessions"},
+        "markdown": format_report_markdown(report),
+    })
+
+
+@app.route("/api/traffic/report/save", methods=["POST"])
+def api_traffic_report_save():
+    from traffic_session_log import build_campaign_report, save_report
+
+    data = request.get_json(silent=True) or {}
+    days = max(1, min(int(data.get("days", 30)), 90))
+    report = build_campaign_report(days=days)
+    json_path, md_path = save_report(report)
+    add_log(f"📊 트래픽 결과 리포트 저장 ({days}일)")
+    return jsonify({
+        "success": True,
+        "report": {k: v for k, v in report.items() if k != "sessions"},
+        "json_path": json_path,
+        "md_path": md_path,
+    })
 
 
 @app.route("/api/completion")
@@ -296,6 +394,69 @@ def api_seo_fixes_guide():
         return jsonify({"success": False, "error": "가이드 없음. /api/seo-fixes 먼저 실행"})
     with open(path, "r", encoding="utf-8") as f:
         return jsonify({"success": True, "content": f.read()})
+
+
+@app.route("/api/keyword/progress")
+def api_keyword_progress():
+    from keyword_progress import build_keyword_progress_board
+
+    days = request.args.get("days", 30, type=int)
+    days = max(1, min(days, 90))
+    board = build_keyword_progress_board(days=days)
+    return jsonify({"success": True, "board": board})
+
+
+@app.route("/api/cron/daily-rank", methods=["POST", "GET"])
+def api_cron_daily_rank():
+    """Google Cloud Scheduler → Cloud Run 호출용."""
+    secret = os.environ.get("CRON_SECRET", "")
+    provided = request.headers.get("X-Cron-Secret") or request.args.get("key", "")
+    if secret and provided != secret:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+
+    import subprocess
+    import sys
+
+    proc = subprocess.run(
+        [sys.executable, "daily_rank_track.py"],
+        cwd=os.path.dirname(os.path.abspath(__file__)),
+        capture_output=True,
+        text=True,
+    )
+    pushed = push_to_cloud(("rank_history.csv",))
+    return jsonify({
+        "success": proc.returncode == 0,
+        "exit_code": proc.returncode,
+        "cloud_sync": pushed,
+        "stderr_tail": (proc.stderr or "")[-500:],
+    })
+
+
+@app.route("/api/health")
+def api_health():
+    return jsonify({"ok": True, "ts": datetime.now().isoformat()})
+
+
+@app.route("/api/background/status")
+def api_background_status():
+    try:
+        from cloud_background import background_status
+        return jsonify({"success": True, **background_status()})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/cloud/status")
+def api_cloud_status():
+    return jsonify({
+        "cloud_storage": cloud_enabled(),
+        "bucket": os.environ.get("GCS_BUCKET") or os.environ.get("GCS_DATA_BUCKET"),
+        "note": (
+            "Cloud Run: 순위 추적·UI는 가능. Playwright 트래픽은 VM/로컬 PC 필요."
+            if cloud_enabled()
+            else "GCS_BUCKET 미설정 — 컨테이너 재시작 시 CSV 초기화될 수 있음"
+        ),
+    })
 
 
 @app.route("/api/rank/followups")
