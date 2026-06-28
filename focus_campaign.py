@@ -2,12 +2,16 @@
 """
 미발견/ Hot 키워드 집중 부스팅 (30위 내 진입 목표).
 
-전략:
-  1) zone별 가중치(weight) — entry·hot에 세션 수 집중
-  2) traffic_service — 네이버 웜업 → 검색 Referer → 쇼핑 SERP → 상품 체류
-  3) zone별 랜덤 체류시간
+인프라:
+  - run_tracked_session → traffic_service (웜업→검색 Referer→SERP→상품)
+  - apply_wait / record_429 → traffic_rate_limit (429·시간당 한도)
+  - 키워드 소스: generated_content/candidate_keywords_focus.json
 
-※ Playwright 필요 — 로컬 PC 또는 GCP VM. Cloudtype 512MB에서는 실행 불가.
+세션 분배 (기본):
+  entry 66×3=198 | hot 1×5=5 | maintain_boost 1×5=5 | maintain 1×1=1 → 209
+
+실행: --dry-run | --limit N | --headless
+Cloudtype(512MB): 순위 전용 — 본 스크립트는 로컬 PC / GCP VM 전용.
 """
 from __future__ import annotations
 
