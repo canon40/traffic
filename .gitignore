@@ -6,6 +6,8 @@ __pycache__/
 .env
 .worker.pid
 .daily_rank_track.lock
+.scheduler_state.json
+.traffic_rate_state.json
 
 # runtime logs & reports
 *.log
