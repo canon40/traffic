@@ -9,7 +9,7 @@
   - 키워드 소스: generated_content/candidate_keywords_focus.json
 
 세션 분배 (기본):
-  entry 66×3=198 | hot 1×5=5 | maintain_boost 1×5=5 | maintain 1×1=1 → 209
+  entry 57×3=171 | hot 1×5=5 | maintain_boost 1×5=5 | maintain 1×1=1 → 182
 
 실행: --dry-run | --limit N | --headless
 Cloudtype(512MB): 순위 전용 — 본 스크립트는 로컬 PC / GCP VM 전용.
@@ -114,7 +114,7 @@ def build_weighted_queue(
             for _ in range(w):
                 queue.append(dict(base))
 
-    # 1) 미발견 66 — 진입 최우선
+    # 1) 미발견 entry_priority — 진입 최우선
     entry = sorted(data.get("entry_priority", []), key=lambda x: -x.get("priority", 0))
     add_items(entry, "entry")
 
