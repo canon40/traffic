@@ -1,5 +1,5 @@
 {
-  "scanned_at": "2026-06-28T17:40:26.301958",
+  "scanned_at": "2026-06-28T21:00:52.507442",
   "items": [
     {
       "keyword": "발수코팅",
@@ -292,10 +292,10 @@
       "product_key": "livingcoat",
       "product_id": "10713170202",
       "product_url": "https://smartstore.naver.com/nanumlab/products/10713170202",
-      "rank": null,
-      "stored_rank": 999,
+      "rank": 13,
+      "stored_rank": 13,
       "mode": "boost",
-      "zone": "entry",
+      "zone": "hot",
       "task_id": "리빙코트|10713170202"
     },
     {

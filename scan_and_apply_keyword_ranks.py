@@ -6,10 +6,12 @@ import json
 import re
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
 from rank_tracker import NOT_FOUND_RANK, append_history, check_product_rank
+from rank_scan_deep import DEFAULT_DEEP_PAGES, check_product_rank_deep
 
 if sys.platform == "win32":
     try:
@@ -29,6 +31,9 @@ MAINTAIN_MAX_RANK = 6
 HOT_MAX_RANK = 30
 CANDIDATE_MAX_RANK = 70
 SCAN_DELAY_SEC = 2.0
+DEFAULT_MAX_PAGES = 13
+DEEP_MAX_PAGES = DEFAULT_DEEP_PAGES
+DEFAULT_PARALLEL = 3
 
 PRODUCTS = {
     "permacoat": ("12639296730", "https://smartstore.naver.com/nanumlab/products/12639296730"),
@@ -201,8 +206,70 @@ def reconcile_items(items: list[dict]) -> list[dict]:
     return out
 
 
-def scan_all(*, use_cache: bool = True, max_pages: int = 13) -> list[dict]:
-    if use_cache and SCAN_OUT.exists():
+def _build_scan_item(
+    keyword: str,
+    pk: str,
+    rank: int | None,
+) -> dict:
+    pid, url = PRODUCTS[pk]
+    stored_rank = NOT_FOUND_RANK if rank is None else rank
+    mode = _mode_for_rank(rank)
+    zone = _zone_for_rank(rank)
+    return {
+        "keyword": keyword,
+        "product_key": pk,
+        "product_id": pid,
+        "product_url": url,
+        "rank": rank,
+        "stored_rank": stored_rank,
+        "mode": mode,
+        "zone": zone,
+        "task_id": _task_id(keyword, pk),
+    }
+
+
+def _scan_single(
+    keyword: str,
+    pk: str,
+    *,
+    deep: bool,
+    max_pages: int,
+    index: int,
+    total: int,
+) -> dict:
+    pid, _ = PRODUCTS[pk]
+    seed = KNOWN_RANKS.get((keyword, pk))
+    print(f"[{index}/{total}] {keyword} ({pk}) …", flush=True)
+
+    scanned: int | None
+    if seed is not None:
+        scanned = seed
+        print(f"  → {seed}위 (시드, 스킵)", flush=True)
+    else:
+        if not deep:
+            time.sleep(SCAN_DELAY_SEC)
+            scanned = check_product_rank(keyword, pid, logger=_log, max_pages=max_pages)
+        else:
+            scanned = check_product_rank_deep(
+                keyword, pid, max_pages=max_pages, logger=_log, headless=True
+            )
+        status = f"{scanned}위" if scanned else "미발견"
+        mode = _mode_for_rank(scanned)
+        print(f"  → {status} ({mode})", flush=True)
+
+    rank = _merge_rank(keyword, pk, scanned if seed is None else seed)
+    return _build_scan_item(keyword, pk, rank)
+
+
+def scan_all(
+    *,
+    use_cache: bool = True,
+    max_pages: int = DEFAULT_MAX_PAGES,
+    deep: bool = False,
+    parallel: int = 1,
+    no_cache: bool = False,
+) -> list[dict]:
+    if use_cache and not no_cache and SCAN_OUT.exists():
         data = json.loads(SCAN_OUT.read_text(encoding="utf-8"))
         age_h = (datetime.now() - datetime.fromisoformat(data["scanned_at"])).total_seconds() / 3600
         if age_h < 12 and data.get("items"):
@@ -210,7 +277,7 @@ def scan_all(*, use_cache: bool = True, max_pages: int = 13) -> list[dict]:
             return reconcile_items(data["items"])
 
     seen: set[tuple[str, str]] = set()
-    items: list[dict] = []
+    tasks: list[tuple[str, str, int]] = []
     total = len(KEYWORD_CATALOG)
 
     for i, (keyword, pk) in enumerate(KEYWORD_CATALOG, 1):
@@ -218,40 +285,59 @@ def scan_all(*, use_cache: bool = True, max_pages: int = 13) -> list[dict]:
         if key in seen:
             continue
         seen.add(key)
+        tasks.append((keyword, pk, i))
 
-        pid, url = PRODUCTS[pk]
-        print(f"[{i}/{total}] {keyword} ({pk}) …", flush=True)
-        seed = KNOWN_RANKS.get(key)
-        scanned = None
-        if seed is None:
-            time.sleep(SCAN_DELAY_SEC)
-            scanned = check_product_rank(keyword, pid, logger=_log, max_pages=max_pages)
-        rank = _merge_rank(keyword, pk, scanned if seed is None else seed)
+    mode_label = f"deep/playwright×{parallel}" if deep else f"requests"
+    print(
+        f"스캔 모드: {mode_label} | 최대 {max_pages}페이지 "
+        f"(≈{max_pages * 40}위) | 대상 {len(tasks)}건",
+        flush=True,
+    )
 
-        stored_rank = NOT_FOUND_RANK if rank is None else rank
-        mode = _mode_for_rank(rank)
-        zone = _zone_for_rank(rank)
+    items: list[dict] = []
 
-        item = {
-            "keyword": keyword,
-            "product_key": pk,
-            "product_id": pid,
-            "product_url": url,
-            "rank": rank,
-            "stored_rank": stored_rank,
-            "mode": mode,
-            "zone": zone,
-            "task_id": _task_id(keyword, pk),
-        }
-        items.append(item)
-        status = f"{rank}위" if rank else "미발견"
-        print(f"  → {status} ({mode})", flush=True)
+    if parallel > 1 and len(tasks) > 1:
+        workers = min(parallel, len(tasks))
+        print(f"병렬 워커 {workers}개로 실행", flush=True)
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {
+                pool.submit(
+                    _scan_single,
+                    kw,
+                    pk,
+                    deep=deep,
+                    max_pages=max_pages,
+                    index=idx,
+                    total=total,
+                ): (kw, pk)
+                for kw, pk, idx in tasks
+            }
+            for fut in as_completed(futures):
+                items.append(fut.result())
+    else:
+        for keyword, pk, idx in tasks:
+            items.append(
+                _scan_single(
+                    keyword, pk, deep=deep, max_pages=max_pages, index=idx, total=total
+                )
+            )
+
+    # 카탈로그 순서 유지
+    order = {(kw, pk): n for n, (kw, pk, _) in enumerate(tasks)}
+    items.sort(key=lambda it: order.get((it["keyword"], it["product_key"]), 999))
 
     items = reconcile_items(items)
     SCAN_OUT.parent.mkdir(exist_ok=True)
     SCAN_OUT.write_text(
         json.dumps(
-            {"scanned_at": datetime.now().isoformat(), "items": items},
+            {
+                "scanned_at": datetime.now().isoformat(),
+                "scan_mode": "deep" if deep else "standard",
+                "max_pages": max_pages,
+                "max_rank": max_pages * 40,
+                "parallel": parallel,
+                "items": items,
+            },
             ensure_ascii=False,
             indent=2,
         ),
@@ -260,7 +346,7 @@ def scan_all(*, use_cache: bool = True, max_pages: int = 13) -> list[dict]:
     return items
 
 
-def apply_scan(items: list[dict], *, record_history: bool = True) -> dict:
+def apply_scan(items: list[dict], *, record_history: bool = True, max_rank: int = 520) -> dict:
     store = "나눔랩"
     cfg_path = ROOT / "config.json"
     cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
@@ -331,7 +417,7 @@ def apply_scan(items: list[dict], *, record_history: bool = True) -> dict:
 
     audit = {
         "updated_at": datetime.now().isoformat(),
-        "criteria": f"상품ID 기준 전체 검색(최대 {70}위 구간 집중 트래픽)",
+        "criteria": f"상품ID 기준 전체 검색(최대 {max_rank}위까지 탐색)",
         "maintain_max_rank": MAINTAIN_MAX_RANK,
         "found_rank_tracking": [it for it in items if it["rank"]],
         "entry_boost": [it for it in items if it["zone"] == "entry"],
@@ -353,7 +439,7 @@ def apply_scan(items: list[dict], *, record_history: bool = True) -> dict:
     if record_history:
         for it in items:
             rank = it["stored_rank"]
-            detail = f"스캔: {it['rank']}위" if it["rank"] else "미발견 (520위 초과)"
+            detail = f"스캔: {it['rank']}위" if it["rank"] else f"미발견 ({max_rank}위 초과)"
             append_history(it["keyword"], store, rank, None, "순위스캔", detail)
 
     return audit
@@ -362,14 +448,30 @@ def apply_scan(items: list[dict], *, record_history: bool = True) -> dict:
 def main() -> int:
     import argparse
 
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(description="키워드×상품 순위 스캔 및 config/focus 반영")
     p.add_argument("--apply-only", action="store_true", help="캐시 스캔 결과만 반영")
-    p.add_argument("--no-cache", action="store_true")
+    p.add_argument("--no-cache", action="store_true", help="12h 캐시 무시")
     p.add_argument("--quick", action="store_true", help="시드+캐시만 (네트워크 스캔 생략)")
+    p.add_argument("--deep", action="store_true", help="Playwright 딥 스캔 (20페이지≒800위, 403 우회)")
+    p.add_argument(
+        "--parallel",
+        type=int,
+        default=0,
+        metavar="N",
+        help=f"병렬 브라우저 수 (--deep 시 기본 {DEFAULT_PARALLEL})",
+    )
+    p.add_argument("--pages", type=int, default=0, help="탐색 최대 페이지 (기본: deep=20, 일반=13)")
     args = p.parse_args()
 
+    max_pages = args.pages if args.pages > 0 else (DEEP_MAX_PAGES if args.deep else DEFAULT_MAX_PAGES)
+    parallel = args.parallel if args.parallel > 0 else (DEFAULT_PARALLEL if args.deep else 1)
+
+    max_rank = max_pages * 40
+
     if args.apply_only:
-        items = reconcile_items(json.loads(SCAN_OUT.read_text(encoding="utf-8"))["items"])
+        scan_data = json.loads(SCAN_OUT.read_text(encoding="utf-8"))
+        items = reconcile_items(scan_data["items"])
+        max_rank = scan_data.get("max_rank", max_rank)
     elif args.quick:
         items = []
         seen = set()
@@ -394,9 +496,15 @@ def main() -> int:
                 }
             )
     else:
-        items = scan_all(use_cache=not args.no_cache)
+        items = scan_all(
+            use_cache=not args.no_cache,
+            max_pages=max_pages,
+            deep=args.deep,
+            parallel=parallel if args.deep else 1,
+            no_cache=args.no_cache,
+        )
 
-    audit = apply_scan(items)
+    audit = apply_scan(items, max_rank=max_rank)
     s = audit["summary"]
     print(json.dumps(s, ensure_ascii=False, indent=2))
     return 0

@@ -497,6 +497,7 @@ def check_product_rank(keyword, product_id, logger=None, max_pages=13):
     headers = {
         "User-Agent": MOBILE_UA,
         "Accept-Language": "ko-KR,ko;q=0.9",
+        "Referer": "https://m.naver.com/",
     }
 
     cumulative_rank = 0  # 지금까지 세어온 상품 수
@@ -508,6 +509,11 @@ def check_product_rank(keyword, product_id, logger=None, max_pages=13):
             log(f"   📄 {page}페이지 조회 중... (start={start})")
 
             res = requests.get(url, headers=headers, timeout=20)
+            if res.status_code == 403:
+                import time
+                log("   ⚠️ HTTP 403 — 3초 후 1회 재시도")
+                time.sleep(3)
+                res = requests.get(url, headers=headers, timeout=20)
             if res.status_code != 200:
                 log(f"   ⚠️ HTTP {res.status_code} — 중단")
                 break
@@ -542,6 +548,7 @@ def check_naver_shopping_rank(keyword, store_name, logger=None):
     headers = {
         "User-Agent": MOBILE_UA,
         "Accept-Language": "ko-KR,ko;q=0.9",
+        "Referer": "https://m.naver.com/",
     }
 
     try:
