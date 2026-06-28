@@ -1,68 +1,146 @@
 # -*- coding: utf-8 -*-
 """
-후보권(11~70위 관측) 키워드만 집중 트래픽.
-429 완화: 세션 간격 90~120초, hot_zone 키워드당 2회, candidate 1회.
+미발견/ Hot 키워드 집중 부스팅 (30위 내 진입 목표).
+
+전략:
+  1) zone별 가중치(weight) — entry·hot에 세션 수 집중
+  2) traffic_service — 네이버 웜업 → 검색 Referer → 쇼핑 SERP → 상품 체류
+  3) zone별 랜덤 체류시간
+
+※ Playwright 필요 — 로컬 PC 또는 GCP VM. Cloudtype 512MB에서는 실행 불가.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
+from traffic_rate_limit import apply_wait, record_429, record_session_start
 from traffic_session_log import run_tracked_session
-from traffic_rate_limit import apply_wait, record_429, record_session_start, status_summary
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
+    except Exception:
+        pass
 
 ROOT = Path(__file__).resolve().parent
 FOCUS_FILE = ROOT / "generated_content" / "candidate_keywords_focus.json"
 LOG_FILE = ROOT / "focus_campaign_log.jsonl"
 
+# zone / boost_type → 세션 반복·체류(초)
+ZONE_PROFILES: dict[str, dict] = {
+    "entry": {"weight": 3, "stay": (45, 70), "boost_type": "entry_boost"},
+    "hot": {"weight": 5, "stay": (60, 90), "boost_type": "hot_boost"},
+    "candidate": {"weight": 1, "stay": (40, 60), "boost_type": "candidate_boost"},
+    "maintain": {"weight": 1, "stay": (30, 45), "boost_type": "maintain"},
+    "maintain_boost": {"weight": 5, "stay": (60, 90), "boost_type": "maintain_boost"},
+}
+
+# 키워드별 zone 오버라이드 (상위 방어 + 화력 집중)
+KEYWORD_ZONE_OVERRIDE: dict[str, str] = {
+    "듀라코트 리빙코트": "maintain_boost",
+    "리빙코트": "hot",
+    "퍼마코트 자동차 코팅제": "maintain",
+}
+
 
 def load_focus() -> dict:
+    if not FOCUS_FILE.exists():
+        raise FileNotFoundError(f"focus 설정 없음: {FOCUS_FILE}")
     with FOCUS_FILE.open(encoding="utf-8") as f:
         return json.load(f)
 
 
-def build_queue(data: dict, hot_sessions: int = 2, candidate_sessions: int = 1, entry_sessions: int = 1) -> list[dict]:
+def _product_url(item: dict) -> str:
+    if item.get("product_url"):
+        return item["product_url"]
+    pid = item.get("product_id")
+    if pid:
+        return f"https://smartstore.naver.com/nanumlab/products/{pid}"
+    return ""
+
+
+def _profile_for(keyword: str, sessions_tag: str) -> dict:
+    zone_key = KEYWORD_ZONE_OVERRIDE.get(keyword, sessions_tag)
+    if zone_key not in ZONE_PROFILES:
+        zone_key = "entry"
+    return {**ZONE_PROFILES[zone_key], "zone_key": zone_key}
+
+
+def build_weighted_queue(
+    data: dict,
+    *,
+    entry_weight: int | None = None,
+    hot_weight: int | None = None,
+    limit: int | None = None,
+) -> list[dict]:
+    """entry → hot → candidate → maintain 순으로 가중치 큐 생성."""
     queue: list[dict] = []
-    entry = sorted(data.get("entry_priority", []), key=lambda x: -x.get("priority", 0))
-    hot = sorted(data.get("hot_zone", []), key=lambda x: -x.get("priority", 0))
-    cand = sorted(data.get("candidate_zone", []), key=lambda x: -x.get("priority", 0))
 
-    for item in entry:
-        url = item.get("product_url") or (
-            f"https://smartstore.naver.com/nanumlab/products/{item['product_id']}"
-            if item.get("product_id")
-            else ""
-        )
-        for _ in range(entry_sessions):
-            queue.append({**item, "product_url": url, "sessions_tag": "entry"})
-    random.shuffle(queue)
-
-    for item in hot:
-        for _ in range(hot_sessions):
-            queue.append({**item, "sessions_tag": "hot"})
-    random.shuffle(queue)
-
-    cand_queue: list[dict] = []
-    for item in cand:
-        for _ in range(candidate_sessions):
-            cand_queue.append({**item, "sessions_tag": "candidate"})
-    random.shuffle(cand_queue)
-    queue.extend(cand_queue)
-
-    for m in data.get("maintain_only", []):
-        queue.append(
-            {
-                "keyword": m["keyword"],
-                "product_url": f"https://smartstore.naver.com/nanumlab/products/{m['product_id']}",
-                "priority": 3,
-                "sessions_tag": "maintain",
-                "last_observed_rank": m.get("last_observed_rank"),
+    def add_items(items: list[dict], default_tag: str) -> None:
+        for item in items:
+            kw = item.get("keyword", "")
+            if not kw:
+                continue
+            prof = _profile_for(kw, default_tag)
+            w = prof["weight"]
+            if default_tag == "entry" and entry_weight is not None:
+                w = entry_weight
+            if default_tag == "hot" and hot_weight is not None:
+                w = hot_weight
+            base = {
+                "keyword": kw,
+                "product_url": _product_url(item),
+                "last_observed_rank": item.get("last_observed_rank"),
+                "priority": item.get("priority", 10),
+                "sessions_tag": default_tag,
+                "boost_type": prof["boost_type"],
+                "zone_key": prof["zone_key"],
+                "stay_range": prof["stay"],
+                "weight": w,
             }
-        )
+            for _ in range(w):
+                queue.append(dict(base))
+
+    # 1) 미발견 66 — 진입 최우선
+    entry = sorted(data.get("entry_priority", []), key=lambda x: -x.get("priority", 0))
+    add_items(entry, "entry")
+
+    # 2) Hot (7~30위)
+    hot = sorted(data.get("hot_zone", []), key=lambda x: -x.get("priority", 0))
+    add_items(hot, "hot")
+
+    # 3) Candidate (31~70위)
+    cand = sorted(data.get("candidate_zone", []), key=lambda x: -x.get("priority", 0))
+    add_items(cand, "candidate")
+
+    # 4) Maintain / maintain_boost
+    for m in data.get("maintain_only", []):
+        kw = m.get("keyword", "")
+        prof = _profile_for(kw, "maintain")
+        base = {
+            "keyword": kw,
+            "product_url": _product_url(m),
+            "last_observed_rank": m.get("last_observed_rank"),
+            "priority": 3,
+            "sessions_tag": prof["zone_key"],
+            "boost_type": prof["boost_type"],
+            "zone_key": prof["zone_key"],
+            "stay_range": prof["stay"],
+            "weight": prof["weight"],
+        }
+        for _ in range(prof["weight"]):
+            queue.append(dict(base))
+
+    random.shuffle(queue)
+    if limit and limit > 0:
+        queue = queue[:limit]
     return queue
 
 
@@ -71,52 +149,81 @@ def append_log(record: dict) -> None:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
+def _gap_seconds(boost_type: str, detected: bool) -> float:
+    if detected:
+        return min(record_429(), 120)
+    if boost_type in ("entry_boost", "hot_boost", "maintain_boost"):
+        return random.uniform(90, 120)
+    return random.uniform(120, 150)
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="후보권 키워드 집중 캠페인")
+    parser = argparse.ArgumentParser(description="미발견/Hot 키워드 가중치 부스팅")
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--hot-sessions", type=int, default=2)
-    parser.add_argument("--candidate-sessions", type=int, default=1)
+    parser.add_argument("--entry-weight", type=int, default=None, help="entry 세션 가중치 (기본 3)")
+    parser.add_argument("--hot-weight", type=int, default=None, help="hot 세션 가중치 (기본 5)")
+    parser.add_argument("--limit", type=int, default=0, help="최대 세션 수 (0=전체)")
     args = parser.parse_args()
 
     data = load_focus()
-    queue = build_queue(data, args.hot_sessions, args.candidate_sessions)
+    limit = args.limit if args.limit > 0 else None
+    queue = build_weighted_queue(
+        data,
+        entry_weight=args.entry_weight,
+        hot_weight=args.hot_weight,
+        limit=limit,
+    )
+
+    entry_n = len(data.get("entry_priority", []))
+    hot_n = len(data.get("hot_zone", []))
+    maintain_n = len(data.get("maintain_only", []))
 
     print("=" * 60)
-    print("FOCUS CAMPAIGN (후보권 집중)")
-    print(f"  hot: {len(data.get('hot_zone', []))} kw x {args.hot_sessions}")
-    print(f"  candidate: {len(data.get('candidate_zone', []))} kw x {args.candidate_sessions}")
-    print(f"  총 세션: {len(queue)}")
+    print("FOCUS BOOST — 30위 내 진입 / 상위 유지")
+    print(f"  entry 키워드: {entry_n} (×weight {ZONE_PROFILES['entry']['weight']})")
+    print(f"  hot: {hot_n} · maintain: {maintain_n}")
+    print(f"  총 세션(가중치 적용): {len(queue)}")
     print("=" * 60)
 
     if args.dry_run:
-        for i, t in enumerate(queue, 1):
+        by_type: dict[str, int] = {}
+        for t in queue:
+            by_type[t["boost_type"]] = by_type.get(t["boost_type"], 0) + 1
+        print("세션 분포:", by_type)
+        for i, t in enumerate(queue[:40], 1):
+            stay = t["stay_range"]
             print(
-                f"  {i:2d}. [{t.get('sessions_tag')}] {t['keyword']} "
-                f"(관측 {t.get('last_observed_rank', '-')}위)"
+                f"  {i:3d}. [{t['boost_type']}] {t['keyword']} "
+                f"체류{stay[0]}-{stay[1]}s 관측={t.get('last_observed_rank', 'None')}"
             )
+        if len(queue) > 40:
+            print(f"  ... 외 {len(queue) - 40}건")
         return 0
 
     cfg_path = ROOT / "traffic_config.json"
-    target_urls = []
-    stay_range = (28, 50)
+    target_urls: list[str] = []
+    rate_cfg: dict = {}
     if cfg_path.exists():
         with cfg_path.open(encoding="utf-8") as f:
             tc = json.load(f)
         target_urls = tc.get("target_urls", [])
-        stay_range = tuple(tc.get("stay_time_range", [28, 50]))
         rate_cfg = tc
-    else:
-        rate_cfg = {}
 
-    import os
     os.environ["TRAFFIC_SKIP_COMPETITORS"] = "1"
 
     rank_tracked: set[str] = set()
+    stats = {"ok": 0, "429": 0, "fail": 0}
+
     for i, task in enumerate(queue, 1):
         kw = task["keyword"]
-        preferred = task["product_url"]
-        print(f"\n[{i}/{len(queue)}] [{task.get('sessions_tag')}] '{kw}'")
+        stay_range = tuple(task["stay_range"])
+        boost_type = task["boost_type"]
+
+        print(
+            f"\n[{i}/{len(queue)}] [{boost_type}] '{kw}' "
+            f"체류 {stay_range[0]}-{stay_range[1]}s"
+        )
 
         apply_wait(rate_cfg, logger=print)
         record_session_start()
@@ -128,8 +235,8 @@ def main() -> int:
         result = run_tracked_session(
             campaign="focus",
             keyword=kw,
-            product_url=preferred,
-            mode=task.get("sessions_tag", ""),
+            product_url=task["product_url"],
+            mode=boost_type,
             track_rank=track_rank,
             target_store_id="nanumlab",
             target_urls=target_urls,
@@ -140,31 +247,40 @@ def main() -> int:
         detected = bool(result.get("detected"))
         status = result.get("status", "UNKNOWN")
         rec = result.get("session_record") or {}
+
         append_log(
             {
                 "at": datetime.now().isoformat(),
                 "keyword": kw,
                 "zone": task.get("sessions_tag"),
+                "boost_type": boost_type,
+                "weight": task.get("weight"),
+                "stay_range": list(stay_range),
                 "observed_rank": task.get("last_observed_rank"),
                 "status": status,
                 "detected": detected,
                 "session_record": rec,
             }
         )
+
+        if detected:
+            stats["429"] += 1
+        elif status.startswith("ERROR"):
+            stats["fail"] += 1
+        else:
+            stats["ok"] += 1
+
         print(f"  -> {status}")
         if rec.get("outcome"):
             print(f"  -> {rec['outcome']}")
 
-        if i < len(queue) and not detected:
-            delay = random.uniform(120, 150)
+        if i < len(queue):
+            delay = _gap_seconds(boost_type, detected)
             print(f"  [wait] {delay:.0f}s")
             time.sleep(delay)
-        elif detected:
-            wait = record_429()
-            print(f"  [cooldown] 429 → {wait // 60}분 등록, 2분 대기 후 종료 권장")
-            time.sleep(min(wait, 120))
 
-    print(f"\n완료. 로그: {LOG_FILE}")
+    print(f"\n완료 ok={stats['ok']} 429={stats['429']} fail={stats['fail']}")
+    print(f"로그: {LOG_FILE}")
     return 0
 
 
