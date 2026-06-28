@@ -5,6 +5,7 @@ __pycache__/
 *.egg-info/
 .env
 .worker.pid
+.daily_rank_track.lock
 
 # runtime logs & reports
 *.log
