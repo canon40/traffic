@@ -31,7 +31,11 @@ echo ""
 
 screen -dmS "$SESSION_NAME" bash -lc "
   cd '$REPO' &&
-  $PY focus_campaign.py --headless 2>&1 | tee -a focus_campaign_gcp.log
+  while true; do
+    $PY focus_campaign.py --headless --loop --cycle-rest 1800 2>&1 | tee -a focus_campaign_gcp.log
+    echo \"[watchdog] focus_campaign 종료 — 60초 후 재시작\" | tee -a focus_campaign_gcp.log
+    sleep 60
+  done
 "
 
 sleep 1

@@ -11,8 +11,7 @@
 세션 분배 (기본):
   entry 57×3=171 | hot 1×5=5 | maintain_boost 1×5=5 | maintain 1×1=1 → 182
 
-실행: --dry-run | --limit N | --headless
-Cloudtype(512MB): 순위 전용 — 본 스크립트는 로컬 PC / GCP VM 전용.
+실행: --dry-run | --limit N | --headless | --loop (24h GCP/로컬)
 """
 from __future__ import annotations
 
@@ -163,10 +162,95 @@ def _gap_seconds(boost_type: str, detected: bool) -> float:
     return random.uniform(120, 150)
 
 
+def run_one_cycle(
+    queue: list[dict],
+    *,
+    headless: bool,
+    target_urls: list[str],
+    rate_cfg: dict,
+) -> dict[str, int]:
+    """가중치 큐 1회 실행. stats 반환."""
+    os.environ["TRAFFIC_SKIP_COMPETITORS"] = "1"
+    rank_tracked: set[str] = set()
+    stats = {"ok": 0, "429": 0, "fail": 0}
+
+    for i, task in enumerate(queue, 1):
+        kw = task["keyword"]
+        stay_range = tuple(task["stay_range"])
+        boost_type = task["boost_type"]
+        browser_profile = pick_random_profile()
+
+        print(
+            f"\n[{i}/{len(queue)}] [{boost_type}] '{kw}' "
+            f"체류 {stay_range[0]}-{stay_range[1]}s | {profile_hint(browser_profile)}"
+        )
+
+        apply_wait(rate_cfg, logger=print)
+        record_session_start()
+
+        track_rank = kw not in rank_tracked
+        if track_rank:
+            rank_tracked.add(kw)
+
+        result = run_tracked_session(
+            campaign="focus",
+            keyword=kw,
+            product_url=task["product_url"],
+            mode=boost_type,
+            track_rank=track_rank,
+            target_store_id="nanumlab",
+            target_urls=target_urls,
+            headless=headless,
+            stay_range=stay_range,
+            browser_profile=browser_profile,
+        )
+
+        detected = bool(result.get("detected"))
+        status = result.get("status", "UNKNOWN")
+        rec = result.get("session_record") or {}
+
+        append_log(
+            {
+                "at": datetime.now().isoformat(),
+                "keyword": kw,
+                "zone": task.get("sessions_tag"),
+                "boost_type": boost_type,
+                "browser_profile": browser_profile.get("label"),
+                "user_agent_hint": profile_hint(browser_profile),
+                "weight": task.get("weight"),
+                "stay_range": list(stay_range),
+                "observed_rank": task.get("last_observed_rank"),
+                "status": status,
+                "detected": detected,
+                "session_record": rec,
+            }
+        )
+
+        if detected:
+            stats["429"] += 1
+        elif status.startswith("ERROR"):
+            stats["fail"] += 1
+        else:
+            stats["ok"] += 1
+
+        print(f"  -> {status}")
+        if rec.get("outcome"):
+            print(f"  -> {rec['outcome']}")
+
+        if i < len(queue):
+            delay = _gap_seconds(boost_type, detected)
+            print(f"  [wait] {delay:.0f}s")
+            time.sleep(delay)
+
+    return stats
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="미발견/Hot 키워드 가중치 부스팅")
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--loop", action="store_true", help="사이클 완료 후 대기하고 24h 무한 반복")
+    parser.add_argument("--cycle-rest", type=int, default=1800, help="사이클 간 대기 초 (기본 30분)")
     parser.add_argument("--entry-weight", type=int, default=None, help="entry 세션 가중치 (기본 3)")
     parser.add_argument("--hot-weight", type=int, default=None, help="hot 세션 가중치 (기본 5)")
     parser.add_argument("--limit", type=int, default=0, help="최대 세션 수 (0=전체)")
@@ -219,79 +303,36 @@ def main() -> int:
 
     os.environ["TRAFFIC_SKIP_COMPETITORS"] = "1"
 
-    rank_tracked: set[str] = set()
-    stats = {"ok": 0, "429": 0, "fail": 0}
+    cycle = 0
+    while True:
+        cycle += 1
+        if args.loop:
+            data = load_focus()
+            queue = build_weighted_queue(
+                data,
+                entry_weight=args.entry_weight,
+                hot_weight=args.hot_weight,
+                limit=limit,
+            )
+            random.shuffle(queue)
+            print(
+                f"\n{'=' * 60}\n[사이클 {cycle}] 세션 {len(queue)}건 — "
+                f"{datetime.now():%Y-%m-%d %H:%M:%S}\n{'=' * 60}"
+            )
 
-    for i, task in enumerate(queue, 1):
-        kw = task["keyword"]
-        stay_range = tuple(task["stay_range"])
-        boost_type = task["boost_type"]
-        browser_profile = pick_random_profile()
-
-        print(
-            f"\n[{i}/{len(queue)}] [{boost_type}] '{kw}' "
-            f"체류 {stay_range[0]}-{stay_range[1]}s | {profile_hint(browser_profile)}"
+        stats = run_one_cycle(
+            queue, headless=args.headless, target_urls=target_urls, rate_cfg=rate_cfg
         )
+        print(f"\n사이클 {cycle} 완료 ok={stats['ok']} 429={stats['429']} fail={stats['fail']}")
+        print(f"로그: {LOG_FILE}")
 
-        apply_wait(rate_cfg, logger=print)
-        record_session_start()
+        if not args.loop:
+            break
 
-        track_rank = kw not in rank_tracked
-        if track_rank:
-            rank_tracked.add(kw)
+        rest = max(300, args.cycle_rest)
+        print(f"\n⏳ 다음 사이클까지 {rest // 60}분 대기 ({rest}s)…")
+        time.sleep(rest)
 
-        result = run_tracked_session(
-            campaign="focus",
-            keyword=kw,
-            product_url=task["product_url"],
-            mode=boost_type,
-            track_rank=track_rank,
-            target_store_id="nanumlab",
-            target_urls=target_urls,
-            headless=args.headless,
-            stay_range=stay_range,
-            browser_profile=browser_profile,
-        )
-
-        detected = bool(result.get("detected"))
-        status = result.get("status", "UNKNOWN")
-        rec = result.get("session_record") or {}
-
-        append_log(
-            {
-                "at": datetime.now().isoformat(),
-                "keyword": kw,
-                "zone": task.get("sessions_tag"),
-                "boost_type": boost_type,
-                "browser_profile": browser_profile.get("label"),
-                "user_agent_hint": profile_hint(browser_profile),
-                "weight": task.get("weight"),
-                "stay_range": list(stay_range),
-                "observed_rank": task.get("last_observed_rank"),
-                "status": status,
-                "detected": detected,
-                "session_record": rec,
-            }
-        )
-
-        if detected:
-            stats["429"] += 1
-        elif status.startswith("ERROR"):
-            stats["fail"] += 1
-        else:
-            stats["ok"] += 1
-
-        print(f"  -> {status}")
-        if rec.get("outcome"):
-            print(f"  -> {rec['outcome']}")
-
-        if i < len(queue):
-            delay = _gap_seconds(boost_type, detected)
-            print(f"  [wait] {delay:.0f}s")
-            time.sleep(delay)
-
-    print(f"\n완료 ok={stats['ok']} 429={stats['429']} fail={stats['fail']}")
-    print(f"로그: {LOG_FILE}")
     return 0
 
 

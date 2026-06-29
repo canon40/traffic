@@ -13,8 +13,11 @@ echo   bash scripts/gcp_traffic_24h.sh
 echo.
 echo [수동 screen]
 echo   screen -S traffic_running
-echo   python3 focus_campaign.py --headless
+echo   python3 focus_campaign.py --headless --loop
 echo   Ctrl+A, D  (detach)
+echo.
+echo [로컬 Windows 24h]
+echo   .\run_focus_24h.bat
 echo.
 echo [재접속] screen -r traffic_running
 echo [코드 갱신] git pull origin main

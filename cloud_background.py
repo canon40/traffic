@@ -133,10 +133,26 @@ def _start_flask_scheduler() -> None:
         _log(f"Flask 스케줄러 시작 실패: {e}")
 
 
+def _rank_sweep_loop() -> None:
+    """Playwright 없이 순위 API 스윕 (ENABLE_CLOUD_TRAFFIC와 독립)."""
+    interval_h = int(os.environ.get("CLOUD_RANK_SWEEP_INTERVAL_HOURS", "4"))
+    time.sleep(120)
+    while True:
+        try:
+            _log("클라우드 순위 스윕 시작")
+            from rank_tracker import build_completion_report, track_all_keywords
+            results = track_all_keywords(logger=_log)
+            report = build_completion_report(results)
+            _log(report.get("summary", "순위 스윕 완료"))
+            _push_cloud_data()
+        except Exception as e:
+            _log(f"순위 스윕 오류: {e}")
+        time.sleep(max(3600, interval_h * 3600))
+
+
 def _cloud_traffic_loop() -> None:
     """
-    클라우드 경량 작업: Playwright 없이 순위 API 스윕 (PC 꺼져도 동작).
-    실제 브라우저 트래픽은 ENABLE_CLOUD_PLAYWRIGHT=1 + Playwright 이미지 필요.
+    Playwright 트래픽 캠페인 (GCP VM 권장 — Cloudtype 512MB에서는 비활성).
     """
     interval_h = int(os.environ.get("CLOUD_TRAFFIC_INTERVAL_HOURS", "6"))
     time.sleep(300)
@@ -145,17 +161,10 @@ def _cloud_traffic_loop() -> None:
             if _env_true("ENABLE_CLOUD_PLAYWRIGHT"):
                 _log("Playwright focus 캠페인 1회")
                 subprocess.run(
-                    [sys.executable, str(ROOT / "focus_campaign.py"), "--headless"],
+                    [sys.executable, str(ROOT / "focus_campaign.py"), "--headless", "--loop"],
                     cwd=str(ROOT),
-                    timeout=3600,
+                    timeout=86400,
                 )
-            elif _env_true("ENABLE_CLOUD_RANK_SWEEP", "1"):
-                _log("클라우드 순위 스윕")
-                from rank_tracker import build_completion_report, track_all_keywords
-                results = track_all_keywords(logger=_log)
-                report = build_completion_report(results)
-                _log(report.get("summary", "완료"))
-                _push_cloud_data()
         except Exception as e:
             _log(f"cloud traffic 오류: {e}")
         time.sleep(max(3600, interval_h * 3600))
@@ -184,13 +193,20 @@ def start_cloud_services() -> None:
         t_daily.start()
         _threads.append(t_daily)
 
-        if _env_true("ENABLE_CLOUD_TRAFFIC", "1"):
+        if _env_true("ENABLE_CLOUD_RANK_SWEEP", "1"):
+            t_sweep = threading.Thread(target=_rank_sweep_loop, daemon=True, name="rank-sweep")
+            t_sweep.start()
+            _threads.append(t_sweep)
+
+        if _env_true("ENABLE_CLOUD_TRAFFIC", "0"):
             t_traffic = threading.Thread(target=_cloud_traffic_loop, daemon=True, name="cloud-traffic")
             t_traffic.start()
             _threads.append(t_traffic)
 
         _log(
             f"설정: 스케줄러={os.environ.get('AUTO_START_SCHEDULER', '1')} "
+            f"순위스윕={os.environ.get('ENABLE_CLOUD_RANK_SWEEP', '1')} "
+            f"트래픽={os.environ.get('ENABLE_CLOUD_TRAFFIC', '0')} "
             f"일일={os.environ.get('DAILY_RANK_HOUR', '9')}:{os.environ.get('DAILY_RANK_MINUTE', '30')} "
             f"DATA_DIR={os.environ.get('DATA_DIR', ROOT)}"
         )

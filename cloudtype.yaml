@@ -14,6 +14,8 @@ options:
       value: "0"
     - name: ENABLE_CLOUD_RANK_SWEEP
       value: "1"
+    - name: CLOUD_RANK_SWEEP_INTERVAL_HOURS
+      value: "4"
     - name: DAILY_RANK_HOUR
       value: "9"
     - name: DAILY_RANK_MINUTE

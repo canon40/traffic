@@ -596,11 +596,15 @@ def track_all_keywords(logger=None):
         return []
 
     results = []
-    for item in keywords:
+    import time as _time
+    for idx, item in enumerate(keywords):
         keyword = item.get("keyword", "")
         store_name = item.get("store_name") or config.get("store_name", "")
         if not keyword or not store_name:
             continue
+
+        if idx > 0:
+            _time.sleep(2.0)
 
         prev = get_last_rank(keyword, store_name)
         product_id = item.get("product_id")
