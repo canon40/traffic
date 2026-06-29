@@ -15,7 +15,11 @@ options:
     - name: ENABLE_CLOUD_RANK_SWEEP
       value: "1"
     - name: CLOUD_RANK_SWEEP_INTERVAL_HOURS
-      value: "4"
+      value: "3"
+    - name: RANK_USE_API
+      value: "1"
+    # Cloudtype 대시보드에서 시크릿으로 설정 (저장소에 키 넣지 말 것):
+    # SERPAPI_KEY, GOOGLE_API_KEY, GOOGLE_CSE_ID, GCS_BUCKET, CRON_SECRET
     - name: DAILY_RANK_HOUR
       value: "9"
     - name: DAILY_RANK_MINUTE

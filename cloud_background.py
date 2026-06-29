@@ -15,6 +15,10 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from env_loader import load_env
+
+load_env()
+
 ROOT = Path(__file__).resolve().parent
 _leader_lock = threading.Lock()
 _started = False
@@ -145,6 +149,15 @@ def _rank_sweep_loop() -> None:
             report = build_completion_report(results)
             _log(report.get("summary", "순위 스윕 완료"))
             _push_cloud_data()
+            # 스캔 결과 JSON도 GCS에 (대시보드 동기화)
+            try:
+                from data_store import push_to_cloud
+                push_to_cloud((
+                    "generated_content/keyword_rank_scan.json",
+                    "generated_content/rank_keyword_audit.json",
+                ))
+            except Exception:
+                pass
         except Exception as e:
             _log(f"순위 스윕 오류: {e}")
         time.sleep(max(3600, interval_h * 3600))
@@ -207,6 +220,8 @@ def start_cloud_services() -> None:
             f"설정: 스케줄러={os.environ.get('AUTO_START_SCHEDULER', '1')} "
             f"순위스윕={os.environ.get('ENABLE_CLOUD_RANK_SWEEP', '1')} "
             f"트래픽={os.environ.get('ENABLE_CLOUD_TRAFFIC', '0')} "
+            f"rank_api={os.environ.get('RANK_USE_API', 'auto')} "
+            f"serpapi={'yes' if os.environ.get('SERPAPI_KEY') else 'no'} "
             f"일일={os.environ.get('DAILY_RANK_HOUR', '9')}:{os.environ.get('DAILY_RANK_MINUTE', '30')} "
             f"DATA_DIR={os.environ.get('DATA_DIR', ROOT)}"
         )

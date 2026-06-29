@@ -22,6 +22,10 @@ ROOT = Path(__file__).resolve().parent
 LOG_FILE = ROOT / "daily_rank_track.log"
 LOCK_FILE = ROOT / ".daily_rank_track.lock"
 
+from env_loader import load_env
+
+load_env()
+
 from rank_tracker import (  # noqa: E402
     build_completion_report,
     build_weekly_rank_report,

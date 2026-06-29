@@ -493,6 +493,17 @@ def check_product_rank(keyword, product_id, logger=None, max_pages=13):
             logger(msg)
 
     product_id = str(product_id).strip()
+
+    try:
+        from rank_api_provider import check_product_rank_api
+        api_rank = check_product_rank_api(
+            keyword, product_id, max_pages=max_pages, logger=logger
+        )
+        if api_rank is not None:
+            return api_rank
+    except Exception as exc:
+        log(f"   ℹ️ API 순위 스킵: {exc}")
+
     log(f"🔍 '{keyword}' 검색 결과에서 상품 {product_id} 순위 조회 (최대 {max_pages}페이지)...")
     headers = {
         "User-Agent": MOBILE_UA,
@@ -604,7 +615,8 @@ def track_all_keywords(logger=None):
             continue
 
         if idx > 0:
-            _time.sleep(2.0)
+            delay = 1.0 if os.environ.get("SERPAPI_KEY") else 2.0
+            _time.sleep(delay)
 
         prev = get_last_rank(keyword, store_name)
         product_id = item.get("product_id")

@@ -10,6 +10,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
+from env_loader import load_env
+
+load_env()
+
 from rank_tracker import NOT_FOUND_RANK, append_history, check_product_rank
 from rank_scan_deep import DEFAULT_DEEP_PAGES, check_product_rank_deep
 

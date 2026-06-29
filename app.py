@@ -3,6 +3,10 @@ import threading
 import time
 from datetime import datetime, timedelta
 
+from env_loader import load_env
+
+load_env()
+
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
 from rank_tracker import (
@@ -406,6 +410,30 @@ def api_keyword_progress():
     return jsonify({"success": True, "board": board})
 
 
+@app.route("/api/cron/rank-sweep", methods=["POST", "GET"])
+def api_cron_rank_sweep():
+    """외부 스케줄러(Cloud Scheduler 등) → API 순위 스윕 + GCS 동기화."""
+    secret = os.environ.get("CRON_SECRET", "")
+    provided = request.headers.get("X-Cron-Secret") or request.args.get("key", "")
+    if secret and provided != secret:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+
+    from rank_tracker import build_completion_report, track_all_keywords
+    from env_loader import api_keys_status
+
+    results = track_all_keywords(logger=add_log)
+    report = build_completion_report(results)
+    pushed = push_to_cloud(("rank_history.csv",))
+    return jsonify({
+        "success": True,
+        "summary": report.get("summary"),
+        "found": sum(1 for r in results if not r.get("not_found")),
+        "total": len(results),
+        "api_keys": api_keys_status(),
+        "cloud_sync": pushed,
+    })
+
+
 @app.route("/api/cron/daily-rank", methods=["POST", "GET"])
 def api_cron_daily_rank():
     """Google Cloud Scheduler → Cloud Run 호출용."""
@@ -448,13 +476,18 @@ def api_background_status():
 
 @app.route("/api/cloud/status")
 def api_cloud_status():
+    from env_loader import api_keys_status
+    keys = api_keys_status()
     return jsonify({
         "cloud_storage": cloud_enabled(),
         "bucket": os.environ.get("GCS_BUCKET") or os.environ.get("GCS_DATA_BUCKET"),
+        "rank_api": keys,
+        "rank_use_api": os.environ.get("RANK_USE_API", "auto"),
         "note": (
-            "Cloud Run: 순위 추적·UI는 가능. Playwright 트래픽은 VM/로컬 PC 필요."
-            if cloud_enabled()
-            else "GCS_BUCKET 미설정 — 컨테이너 재시작 시 CSV 초기화될 수 있음"
+            "API 순위(SerpAPI/CSE) + GCS로 Cloudtype 24h 순위 추적 가능. "
+            "Playwright 트래픽은 GCP VM/로컬 run_focus_24h.bat 필요."
+            if keys.get("serpapi") or keys.get("google_cse")
+            else "SERPAPI_KEY 또는 GOOGLE_API_KEY+CSE_ID를 Cloudtype 환경변수에 설정하세요."
         ),
     })
 

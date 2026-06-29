@@ -64,7 +64,7 @@ def push_to_cloud(filenames: tuple[str, ...] | None = None) -> list[str]:
             path = ROOT / name
             if not path.exists():
                 continue
-            blob = b.blob(_blob_path(name))
+            blob = b.blob(_blob_path(name.replace("\\", "/")))
             blob.upload_from_filename(str(path))
             pushed.append(name)
     except Exception as e:
