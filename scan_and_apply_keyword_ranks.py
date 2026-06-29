@@ -15,7 +15,7 @@ from env_loader import load_env
 load_env()
 
 from rank_tracker import NOT_FOUND_RANK, append_history, check_product_rank
-from rank_scan_deep import DEFAULT_DEEP_PAGES, check_product_rank_deep
+from rank_scan_deep import DEFAULT_DEEP_PAGES, DeepRankBrowser, check_product_rank_deep
 
 if sys.platform == "win32":
     try:
@@ -35,9 +35,10 @@ MAINTAIN_MAX_RANK = 6
 HOT_MAX_RANK = 30
 CANDIDATE_MAX_RANK = 70
 SCAN_DELAY_SEC = 2.0
+DEEP_KEYWORD_DELAY_SEC = 10.0
 DEFAULT_MAX_PAGES = 13
 DEEP_MAX_PAGES = DEFAULT_DEEP_PAGES
-DEFAULT_PARALLEL = 3
+DEFAULT_PARALLEL = 1
 
 PRODUCTS = {
     "permacoat": ("12639296730", "https://smartstore.naver.com/nanumlab/products/12639296730"),
@@ -240,6 +241,7 @@ def _scan_single(
     max_pages: int,
     index: int,
     total: int,
+    deep_session: DeepRankBrowser | None = None,
 ) -> dict:
     pid, _ = PRODUCTS[pk]
     seed = KNOWN_RANKS.get((keyword, pk))
@@ -254,9 +256,15 @@ def _scan_single(
             time.sleep(SCAN_DELAY_SEC)
             scanned = check_product_rank(keyword, pid, logger=_log, max_pages=max_pages)
         else:
-            scanned = check_product_rank_deep(
-                keyword, pid, max_pages=max_pages, logger=_log, headless=True
-            )
+            if deep_session is not None:
+                if index > 1:
+                    deep_session.between_keywords()
+                scanned = deep_session.check_rank(keyword, pid, max_pages=max_pages)
+            else:
+                time.sleep(DEEP_KEYWORD_DELAY_SEC)
+                scanned = check_product_rank_deep(
+                    keyword, pid, max_pages=max_pages, logger=_log, headless=True
+                )
         status = f"{scanned}위" if scanned else "미발견"
         mode = _mode_for_rank(scanned)
         print(f"  → {status} ({mode})", flush=True)
@@ -291,16 +299,39 @@ def scan_all(
         seen.add(key)
         tasks.append((keyword, pk, i))
 
-    mode_label = f"deep/playwright×{parallel}" if deep else f"requests"
+    mode_label = f"deep/stealth×{parallel}" if deep else "api/requests"
     print(
         f"스캔 모드: {mode_label} | 최대 {max_pages}페이지 "
         f"(≈{max_pages * 40}위) | 대상 {len(tasks)}건",
         flush=True,
     )
+    if deep:
+        print(
+            "봇 회피: API 1000위 우선 · 단일 브라우저 · 키워드 간 8~14초 휴식 · Captcha 시 대기 재시도",
+            flush=True,
+        )
 
     items: list[dict] = []
 
-    if parallel > 1 and len(tasks) > 1:
+    if parallel > 1 and len(tasks) > 1 and deep:
+        print("⚠️ --parallel>1 은 봇 차단 위험 — 1로 강제합니다", flush=True)
+        parallel = 1
+
+    if deep and parallel <= 1:
+        with DeepRankBrowser(headless=True, logger=_log) as deep_session:
+            for keyword, pk, idx in tasks:
+                items.append(
+                    _scan_single(
+                        keyword,
+                        pk,
+                        deep=deep,
+                        max_pages=max_pages,
+                        index=idx,
+                        total=total,
+                        deep_session=deep_session,
+                    )
+                )
+    elif parallel > 1 and len(tasks) > 1:
         workers = min(parallel, len(tasks))
         print(f"병렬 워커 {workers}개로 실행", flush=True)
         with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -473,13 +504,13 @@ def main() -> int:
     p.add_argument("--apply-only", action="store_true", help="캐시 스캔 결과만 반영")
     p.add_argument("--no-cache", action="store_true", help="12h 캐시 무시")
     p.add_argument("--quick", action="store_true", help="시드+캐시만 (네트워크 스캔 생략)")
-    p.add_argument("--deep", action="store_true", help="Playwright 딥 스캔 (20페이지≒800위, 403 우회)")
+    p.add_argument("--deep", action="store_true", help="API+Playwright 딥 스캔 (stealth, 순차 1브라우저)")
     p.add_argument(
         "--parallel",
         type=int,
         default=0,
         metavar="N",
-        help=f"병렬 브라우저 수 (--deep 시 기본 {DEFAULT_PARALLEL})",
+        help="병렬 수 (딥스캔은 1 권장, 기본 1)",
     )
     p.add_argument("--pages", type=int, default=0, help="탐색 최대 페이지 (기본: deep=20, 일반=13)")
     args = p.parse_args()

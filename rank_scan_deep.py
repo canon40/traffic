@@ -1,112 +1,328 @@
 # -*- coding: utf-8 -*-
-"""Playwright 기반 네이버 쇼핑 딥 순위 스캔 (12페이지+ / 403 우회)."""
+"""Playwright 딥 순위 스캔 — API 우선, 스텔스·쿠키·Captcha 대기."""
 from __future__ import annotations
 
+import json
+import os
 import random
 import time
+from pathlib import Path
 from typing import Callable
 
 from rank_tracker import MOBILE_UA, _extract_ordered_product_ids, _shopping_search_url
 
 try:
-    from playwright.sync_api import sync_playwright
+    from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
 
     _PW_OK = True
 except ImportError:
     _PW_OK = False
+    Browser = BrowserContext = Page = Playwright = None  # type: ignore
 
 try:
-    from playwright_stealth import stealth_sync
+    from playwright_stealth import Stealth
 
-    _STEALTH_OK = True
+    def _apply_stealth(page: Page) -> None:
+        Stealth().apply_stealth_sync(page)
 except ImportError:
-    _STEALTH_OK = False
-
-DEFAULT_DEEP_PAGES = 20  # 모바일 40개/페이지 → 최대 800위
-ITEMS_PER_PAGE = 40
-
-_EXTRACT_JS = """() => {
-    const links = Array.from(document.querySelectorAll(
-        'a[href*="/products/"], a[href*="smartstore.naver.com"]'
-    ));
-    const seen = new Set();
-    const ordered = [];
-    for (const a of links) {
-        const href = a.href || '';
-        const m = href.match(/\\/products\\/(\\d+)/);
-        if (m && !seen.has(m[1])) {
-            seen.add(m[1]);
-            ordered.push(m[1]);
-        }
-    }
-    return ordered;
-}"""
-
-
-def _page_product_ids(page, html: str) -> list[str]:
-    """DOM JS 추출 우선, HTML regex 폴백."""
     try:
-        ids = page.evaluate(_EXTRACT_JS)
-        if ids:
-            return ids
+        from playwright_stealth import stealth_sync as _stealth_legacy
+
+        def _apply_stealth(page: Page) -> None:
+            _stealth_legacy(page)
+    except ImportError:
+        def _apply_stealth(page: Page) -> None:
+            pass
+
+DEFAULT_DEEP_PAGES = 20
+ITEMS_PER_PAGE = 40
+NAVER_API_MAX_PAGES = 25
+COOKIE_FILE = Path(__file__).resolve().parent / "data" / "naver_rank_cookies.json"
+
+_DEVICE_NAMES = ("Galaxy S9+", "Pixel 5", "iPhone 13 Pro", "iPhone 12")
+
+
+def playwright_available() -> bool:
+    return _PW_OK
+
+
+def _headless_default() -> bool:
+    return os.environ.get("RANK_DEEP_HEADLESS", "1").strip().lower() not in ("0", "false", "no")
+
+
+def _log(logger: Callable[[str], None] | None, msg: str) -> None:
+    if logger:
+        logger(msg)
+
+
+def is_blocked_html(html: str) -> bool:
+    if not html:
+        return True
+    low = html.lower()
+    markers = (
+        "captcha",
+        "비정상적인",
+        "자동입력",
+        "recaptcha",
+        "security_check",
+        "access denied",
+        "unusual traffic",
+    )
+    return any(m in low for m in markers)
+
+
+def _human_pause(lo: float = 1.2, hi: float = 2.8) -> None:
+    time.sleep(random.uniform(lo, hi))
+
+
+def _human_scroll(page: Page) -> None:
+    for _ in range(random.randint(2, 4)):
+        page.mouse.wheel(0, random.randint(400, 900))
+        _human_pause(0.4, 0.9)
+
+
+def _load_cookies(context: BrowserContext) -> bool:
+    if not COOKIE_FILE.is_file():
+        return False
+    try:
+        raw = json.loads(COOKIE_FILE.read_text(encoding="utf-8"))
+        cookies = raw if isinstance(raw, list) else raw.get("cookies") or []
+        if cookies:
+            context.add_cookies(cookies)
+            return True
     except Exception:
         pass
-    return _extract_ordered_product_ids(html)
+    return False
 
 
-def _check_via_requests(
+def _save_cookies(context: BrowserContext) -> None:
+    try:
+        cookies = context.cookies()
+        if not cookies:
+            return
+        COOKIE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        COOKIE_FILE.write_text(json.dumps(cookies, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _api_rank_first(
     keyword: str,
     product_id: str,
     *,
     max_pages: int,
     logger: Callable[[str], None] | None,
 ) -> int | None:
-    """Playwright 실패 시 Referer 포함 HTTP 폴백."""
-    import requests
+    try:
+        from rank_api_provider import check_product_rank_api
 
-    def log(msg: str) -> None:
-        if logger:
-            logger(msg)
+        return check_product_rank_api(
+            keyword,
+            product_id,
+            max_pages=min(max_pages, NAVER_API_MAX_PAGES),
+            logger=logger,
+        )
+    except Exception as exc:
+        _log(logger, f"   ℹ️ API 순위 스킵: {exc}")
+        return None
 
-    headers = {
-        "User-Agent": MOBILE_UA,
-        "Accept-Language": "ko-KR,ko;q=0.9",
-        "Referer": "https://m.naver.com/",
-    }
-    pid = str(product_id).strip()
-    cumulative = 0
 
-    for page_num in range(1, max_pages + 1):
-        start = (page_num - 1) * ITEMS_PER_PAGE + 1
-        url = _shopping_search_url(keyword, start=start)
-        log(f"   📡 HTTP 폴백 {page_num}페이지 (start={start})")
+def _goto_search_page(
+    page: Page,
+    keyword: str,
+    start: int,
+    *,
+    logger: Callable[[str], None] | None,
+    retries: int = 2,
+) -> str | None:
+    url = _shopping_search_url(keyword, start=start)
+    referer = "https://m.naver.com/"
+    for attempt in range(retries + 1):
         try:
-            res = requests.get(url, headers=headers, timeout=20)
-            if res.status_code == 403:
-                time.sleep(3)
-                res = requests.get(url, headers=headers, timeout=20)
-            if res.status_code != 200:
-                log(f"   ⚠️ HTTP {res.status_code}")
-                break
+            page.goto(url, wait_until="domcontentloaded", timeout=35_000, referer=referer)
+            _human_pause(1.5, 3.0)
+            _human_scroll(page)
+            try:
+                page.wait_for_selector(
+                    'a[href*="/products/"], a[href*="smartstore"]',
+                    timeout=10_000,
+                )
+            except Exception:
+                pass
+            html = page.content()
         except Exception as exc:
-            log(f"   ⚠️ HTTP 오류 — {exc}")
-            break
+            _log(logger, f"   ⚠️ 페이지 로드 실패 — {exc}")
+            html = ""
 
-        page_ids = _extract_ordered_product_ids(res.text)
-        if not page_ids:
-            break
+        if html and not is_blocked_html(html):
+            return html
 
-        for p in page_ids:
-            cumulative += 1
-            if p == pid:
-                log(f"✅ [HTTP] 상품 {pid}: {cumulative}위")
-                return cumulative
-
-        if len(page_ids) < 35:
-            break
-        time.sleep(random.uniform(0.5, 1.0))
-
+        if attempt < retries:
+            wait = random.uniform(40, 75) * (attempt + 1)
+            _log(logger, f"   ⏳ 봇 감지 — {wait:.0f}초 대기 후 재시도 ({attempt + 1}/{retries})")
+            time.sleep(wait)
+            try:
+                page.goto("https://m.naver.com/", wait_until="domcontentloaded", timeout=20_000)
+                _human_pause(2.0, 4.0)
+            except Exception:
+                pass
+    _log(logger, "   ⚠️ 봇 차단 지속 — 이 키워드 Playwright 중단")
     return None
+
+
+class DeepRankBrowser:
+    """키워드 간 브라우저·쿠키 재사용 (병렬 1 권장)."""
+
+    def __init__(
+        self,
+        *,
+        headless: bool | None = None,
+        logger: Callable[[str], None] | None = None,
+    ):
+        self.headless = _headless_default() if headless is None else headless
+        self.logger = logger
+        self._pw: Playwright | None = None
+        self._browser: Browser | None = None
+        self._context: BrowserContext | None = None
+        self._page: Page | None = None
+
+    def __enter__(self) -> DeepRankBrowser:
+        if not _PW_OK:
+            raise RuntimeError("playwright 미설치 — install_playwright.bat 실행")
+        self._pw = sync_playwright().start()
+        device_name = random.choice(_DEVICE_NAMES)
+        device = self._pw.devices.get(device_name) or self._pw.devices["Pixel 5"]
+        ctx_args = {k: v for k, v in device.items() if k != "default_browser_type"}
+        self._browser = self._pw.chromium.launch(
+            headless=self.headless,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+            ],
+        )
+        self._context = self._browser.new_context(
+            **ctx_args,
+            locale="ko-KR",
+            timezone_id="Asia/Seoul",
+            user_agent=MOBILE_UA,
+        )
+        _load_cookies(self._context)
+        self._page = self._context.new_page()
+        _apply_stealth(self._page)
+        self._warmup()
+        _log(self.logger, f"🌐 딥스캔 브라우저 시작 ({device_name}, headless={self.headless})")
+        return self
+
+    def _warmup(self) -> None:
+        assert self._page is not None
+        try:
+            self._page.goto("https://m.naver.com/", wait_until="domcontentloaded", timeout=25_000)
+            _human_pause(2.0, 3.5)
+            self._page.goto(
+                "https://m.search.naver.com/search.naver?query=나눔랩&where=m_shop",
+                wait_until="domcontentloaded",
+                timeout=25_000,
+                referer="https://m.naver.com/",
+            )
+            _human_pause(1.5, 2.5)
+            _human_scroll(self._page)
+        except Exception:
+            pass
+
+    def between_keywords(self) -> None:
+        """키워드 사이 휴식 — 봇 패턴 완화."""
+        assert self._page is not None
+        _human_pause(8.0, 14.0)
+        try:
+            self._page.goto("https://m.naver.com/", wait_until="domcontentloaded", timeout=20_000)
+            _human_pause(1.5, 3.0)
+        except Exception:
+            pass
+
+    def check_rank(
+        self,
+        keyword: str,
+        product_id: str,
+        *,
+        max_pages: int = DEFAULT_DEEP_PAGES,
+    ) -> int | None:
+        product_id = str(product_id).strip()
+        keyword = keyword.strip()
+        _log(
+            self.logger,
+            f"🔍 [deep] '{keyword}' 상품 {product_id} (최대 {max_pages}페이지 ≒{max_pages * ITEMS_PER_PAGE}위)",
+        )
+
+        api_rank = _api_rank_first(keyword, product_id, max_pages=max_pages, logger=self.logger)
+        if api_rank is not None:
+            _log(self.logger, f"✅ [API] 상품 {product_id}: {api_rank}위")
+            return api_rank
+
+        if not self._page:
+            return None
+
+        start_page = NAVER_API_MAX_PAGES + 1 if max_pages > NAVER_API_MAX_PAGES else 1
+        rank_offset = (start_page - 1) * ITEMS_PER_PAGE if start_page > 1 else 0
+        cumulative = rank_offset
+
+        for page_num in range(start_page, max_pages + 1):
+            start = (page_num - 1) * ITEMS_PER_PAGE + 1
+            _log(self.logger, f"   📄 {page_num}페이지 (start={start})")
+
+            html = _goto_search_page(
+                self._page, keyword, start, logger=self.logger, retries=2
+            )
+            if not html:
+                break
+
+            page_ids = _extract_ordered_product_ids(html)
+            try:
+                dom_ids = self._page.evaluate(
+                    """() => {
+                    const links = Array.from(document.querySelectorAll(
+                        'a[href*="/products/"], a[href*="smartstore.naver.com"]'
+                    ));
+                    const seen = new Set(), out = [];
+                    for (const a of links) {
+                        const m = (a.href || '').match(/\\/products\\/(\\d+)/);
+                        if (m && !seen.has(m[1])) { seen.add(m[1]); out.push(m[1]); }
+                    }
+                    return out;
+                }"""
+                )
+                if dom_ids:
+                    page_ids = dom_ids
+            except Exception:
+                pass
+
+            if not page_ids:
+                _log(self.logger, f"   ⚠️ {page_num}페이지 결과 없음 — 탐색 종료")
+                break
+
+            for pid in page_ids:
+                cumulative += 1
+                if pid == product_id:
+                    _log(self.logger, f"✅ 상품 {product_id}: {cumulative}위 ({page_num}페이지)")
+                    return cumulative
+
+            if page_num < max_pages:
+                _human_pause(2.0, 4.5)
+
+        _log(self.logger, f"⚠️ 상품 {product_id} {cumulative}위 이후 미발견 (Playwright)")
+        return None
+
+    def __exit__(self, *args) -> None:
+        if self._context:
+            _save_cookies(self._context)
+        if self._browser:
+            self._browser.close()
+        if self._pw:
+            self._pw.stop()
+        self._page = None
+        self._context = None
+        self._browser = None
+        self._pw = None
 
 
 def check_product_rank_deep(
@@ -115,97 +331,15 @@ def check_product_rank_deep(
     *,
     max_pages: int = DEFAULT_DEEP_PAGES,
     logger: Callable[[str], None] | None = None,
-    headless: bool = True,
+    headless: bool | None = None,
+    session: DeepRankBrowser | None = None,
 ) -> int | None:
     """
-    Playwright + start= 페이징으로 깊은 순위 탐색.
-    발견 즉시 반환, 빈 페이지·403 시 중단.
+    API(1000위) → Playwright 딥스캔.
+    session을 넘기면 브라우저 재사용(권장). 없으면 키워드마다 새 브라우저.
     """
-    if not _PW_OK:
-        raise RuntimeError("playwright 미설치 — pip install playwright && playwright install chromium")
+    if session is not None:
+        return session.check_rank(keyword, product_id, max_pages=max_pages)
 
-    def log(msg: str) -> None:
-        if logger:
-            logger(msg)
-
-    product_id = str(product_id).strip()
-    keyword = keyword.strip()
-    log(f"🔍 [deep] '{keyword}' 상품 {product_id} (최대 {max_pages}페이지 ≒{max_pages * ITEMS_PER_PAGE}위)")
-
-    cumulative_rank = 0
-
-    with sync_playwright() as p:
-        device = p.devices.get("Galaxy S9+") or p.devices["Pixel 5"]
-        ctx_args = {k: v for k, v in device.items() if k != "default_browser_type"}
-        ctx_args["user_agent"] = MOBILE_UA
-        browser = p.chromium.launch(
-            headless=headless,
-            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
-        )
-        context = browser.new_context(
-            **ctx_args,
-            locale="ko-KR",
-            timezone_id="Asia/Seoul",
-        )
-        page = context.new_page()
-        if _STEALTH_OK:
-            stealth_sync(page)
-
-        # 네이버 모바일 웜업 (Referer·쿠키 확보)
-        try:
-            page.goto("https://m.naver.com/", wait_until="domcontentloaded", timeout=20_000)
-            time.sleep(random.uniform(1.0, 2.0))
-        except Exception:
-            pass
-
-        try:
-            for page_num in range(1, max_pages + 1):
-                start = (page_num - 1) * ITEMS_PER_PAGE + 1
-                url = _shopping_search_url(keyword, start=start)
-                log(f"   📄 {page_num}페이지 (start={start})")
-
-                try:
-                    page.goto(url, wait_until="networkidle", timeout=30_000, referer="https://m.naver.com/")
-                    time.sleep(random.uniform(1.2, 2.0))
-                    # 모바일 쇼핑 lazy-load: 짧은 스크롤 후 재수집
-                    page.mouse.wheel(0, 800)
-                    time.sleep(random.uniform(0.5, 1.0))
-                    try:
-                        page.wait_for_selector(
-                            'a[href*="/products/"], a[href*="smartstore"]',
-                            timeout=8_000,
-                        )
-                    except Exception:
-                        pass
-                    html = page.content()
-                except Exception as exc:
-                    log(f"   ⚠️ 페이지 로드 실패 — {exc}")
-                    break
-
-                if "captcha" in html.lower() or "비정상적인" in html:
-                    log("   ⚠️ 봇 차단(Captcha) 감지 — 중단")
-                    break
-
-                page_ids = _page_product_ids(page, html)
-                if not page_ids:
-                    log(f"   ⚠️ {page_num}페이지 결과 없음 — 탐색 종료")
-                    break
-
-                for pid in page_ids:
-                    cumulative_rank += 1
-                    if pid == product_id:
-                        log(f"✅ 상품 {product_id}: {cumulative_rank}위 ({page_num}페이지)")
-                        return cumulative_rank
-
-                if page_num < max_pages:
-                    time.sleep(random.uniform(0.6, 1.2))
-
-        finally:
-            browser.close()
-
-    log(f"⚠️ 상품 {product_id} {cumulative_rank}위 이후 미발견 (Playwright)")
-    fallback = _check_via_requests(keyword, product_id, max_pages=max_pages, logger=logger)
-    if fallback:
-        return fallback
-    log(f"⚠️ HTTP 폴백도 미발견")
-    return None
+    with DeepRankBrowser(headless=headless, logger=logger) as browser:
+        return browser.check_rank(keyword, product_id, max_pages=max_pages)

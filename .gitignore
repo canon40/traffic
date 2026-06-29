@@ -22,6 +22,7 @@ seo_audit_history.json
 
 # session cookies
 smartstore_user_data/
+data/naver_rank_cookies.json
 security_vault/
 
 # generated / build artifacts
