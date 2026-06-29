@@ -15,7 +15,7 @@ from env_loader import load_env
 load_env()
 
 from rank_tracker import NOT_FOUND_RANK, append_history, check_product_rank
-from rank_scan_deep import DEFAULT_DEEP_PAGES, DeepRankBrowser, check_product_rank_deep
+from rank_scan_deep import DEFAULT_DEEP_PAGES, DeepRankBrowser, _headless_default, check_product_rank_deep
 
 if sys.platform == "win32":
     try:
@@ -307,7 +307,7 @@ def scan_all(
     )
     if deep:
         print(
-            "봇 회피: API 1000위 우선 · 단일 브라우저 · 키워드 간 8~14초 휴식 · Captcha 시 대기 재시도",
+            "봇 회피: API 1000위 우선 · Playwright는 1001위+ 또는 API 미설정 시만 · 키워드 간 휴식",
             flush=True,
         )
 
@@ -318,7 +318,7 @@ def scan_all(
         parallel = 1
 
     if deep and parallel <= 1:
-        with DeepRankBrowser(headless=True, logger=_log) as deep_session:
+        with DeepRankBrowser(headless=_headless_default(), logger=_log) as deep_session:
             for keyword, pk, idx in tasks:
                 items.append(
                     _scan_single(

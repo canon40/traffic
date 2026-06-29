@@ -38,6 +38,7 @@ DEFAULT_DEEP_PAGES = 20
 ITEMS_PER_PAGE = 40
 NAVER_API_MAX_PAGES = 25
 COOKIE_FILE = Path(__file__).resolve().parent / "data" / "naver_rank_cookies.json"
+MANUAL_CAPTCHA_WAIT_SEC = int(os.environ.get("RANK_CAPTCHA_WAIT_SEC", "180"))
 
 _DEVICE_NAMES = ("Galaxy S9+", "Pixel 5", "iPhone 13 Pro", "iPhone 12")
 
@@ -50,25 +51,63 @@ def _headless_default() -> bool:
     return os.environ.get("RANK_DEEP_HEADLESS", "1").strip().lower() not in ("0", "false", "no")
 
 
+def _skip_playwright() -> bool:
+    return os.environ.get("RANK_DEEP_SKIP_PW", "0").strip().lower() in ("1", "true", "yes")
+
+
 def _log(logger: Callable[[str], None] | None, msg: str) -> None:
     if logger:
         logger(msg)
 
 
-def is_blocked_html(html: str) -> bool:
-    if not html:
+def is_blocked_page(page: Page | None, html: str) -> bool:
+    """URL·본문·상품 링크 수로 차단 판별 (captcha 단독 문자열 오탐 방지)."""
+    if not html or len(html) < 400:
         return True
+    if page is not None:
+        try:
+            url = (page.url or "").lower()
+            if any(x in url for x in ("captcha", "security_check", "blocked", "nidlogin")):
+                return True
+        except Exception:
+            pass
+        try:
+            product_links = page.locator(
+                'a[href*="/products/"], a[href*="smartstore"]'
+            ).count()
+        except Exception:
+            product_links = 0
+    else:
+        product_links = html.lower().count("/products/")
+
+    if product_links >= 5:
+        strong = (
+            "비정상적인 접근",
+            "자동입력 방지",
+            "보안 확인을",
+            "access denied",
+            "unusual traffic",
+            "자동등록방지",
+        )
+        low = html.lower()
+        return any(m in html for m in strong) or "recaptcha" in low
+
     low = html.lower()
     markers = (
-        "captcha",
         "비정상적인",
         "자동입력",
+        "자동등록방지",
         "recaptcha",
         "security_check",
         "access denied",
         "unusual traffic",
+        "보안 확인",
     )
     return any(m in low for m in markers)
+
+
+def is_blocked_html(html: str) -> bool:
+    return is_blocked_page(None, html)
 
 
 def _human_pause(lo: float = 1.2, hi: float = 2.8) -> None:
@@ -112,19 +151,32 @@ def _api_rank_first(
     *,
     max_pages: int,
     logger: Callable[[str], None] | None,
-) -> int | None:
+) -> tuple[int | None, bool]:
+    """(순위, API로 요청 범위 스캔 완료 여부). API 미설정 시 (None, False)."""
     try:
-        from rank_api_provider import check_product_rank_api
+        from rank_api_provider import _should_use_api, check_product_rank_api
 
-        return check_product_rank_api(
+        if not _should_use_api():
+            return None, False
+        rank = check_product_rank_api(
             keyword,
             product_id,
             max_pages=min(max_pages, NAVER_API_MAX_PAGES),
             logger=logger,
         )
+        return (rank, True) if rank is not None else (None, True)
     except Exception as exc:
         _log(logger, f"   ℹ️ API 순위 스킵: {exc}")
-        return None
+        return None, False
+
+
+def _playwright_start_page(max_pages: int, api_done: bool) -> tuple[int, int]:
+    """Playwright 시작 페이지·누적 순위 오프셋."""
+    if api_done:
+        if max_pages <= NAVER_API_MAX_PAGES:
+            return 0, 0
+        return NAVER_API_MAX_PAGES + 1, NAVER_API_MAX_PAGES * ITEMS_PER_PAGE
+    return 1, 0
 
 
 def _goto_search_page(
@@ -133,6 +185,7 @@ def _goto_search_page(
     start: int,
     *,
     logger: Callable[[str], None] | None,
+    headless: bool = True,
     retries: int = 2,
 ) -> str | None:
     url = _shopping_search_url(keyword, start=start)
@@ -154,8 +207,21 @@ def _goto_search_page(
             _log(logger, f"   ⚠️ 페이지 로드 실패 — {exc}")
             html = ""
 
-        if html and not is_blocked_html(html):
+        if html and not is_blocked_page(page, html):
             return html
+
+        if not headless and html and is_blocked_page(page, html):
+            _log(logger, f"   ⏸️ 캡차/보안 페이지 — 브라우저에서 풀어주세요 (최대 {MANUAL_CAPTCHA_WAIT_SEC}초)")
+            deadline = time.time() + MANUAL_CAPTCHA_WAIT_SEC
+            while time.time() < deadline:
+                time.sleep(3)
+                try:
+                    html = page.content()
+                    if html and not is_blocked_page(page, html):
+                        return html
+                except Exception:
+                    pass
+            _log(logger, "   ⚠️ 수동 캡차 대기 시간 초과")
 
         if attempt < retries:
             wait = random.uniform(40, 75) * (attempt + 1)
@@ -171,7 +237,7 @@ def _goto_search_page(
 
 
 class DeepRankBrowser:
-    """키워드 간 브라우저·쿠키 재사용 (병렬 1 권장)."""
+    """키워드 간 브라우저·쿠키 재사용 (병렬 1 권장). Playwright는 필요할 때만 기동."""
 
     def __init__(
         self,
@@ -185,14 +251,25 @@ class DeepRankBrowser:
         self._browser: Browser | None = None
         self._context: BrowserContext | None = None
         self._page: Page | None = None
+        self._started = False
+        self._block_streak = 0
 
     def __enter__(self) -> DeepRankBrowser:
+        return self
+
+    def _ensure_browser(self) -> bool:
+        if self._page is not None:
+            return True
         if not _PW_OK:
             raise RuntimeError("playwright 미설치 — install_playwright.bat 실행")
         self._pw = sync_playwright().start()
         device_name = random.choice(_DEVICE_NAMES)
         device = self._pw.devices.get(device_name) or self._pw.devices["Pixel 5"]
         ctx_args = {k: v for k, v in device.items() if k != "default_browser_type"}
+        ctx_args.pop("user_agent", None)
+        ctx_args["user_agent"] = MOBILE_UA
+        ctx_args["locale"] = "ko-KR"
+        ctx_args["timezone_id"] = "Asia/Seoul"
         self._browser = self._pw.chromium.launch(
             headless=self.headless,
             args=[
@@ -201,18 +278,14 @@ class DeepRankBrowser:
                 "--disable-dev-shm-usage",
             ],
         )
-        self._context = self._browser.new_context(
-            **ctx_args,
-            locale="ko-KR",
-            timezone_id="Asia/Seoul",
-            user_agent=MOBILE_UA,
-        )
+        self._context = self._browser.new_context(**ctx_args)
         _load_cookies(self._context)
         self._page = self._context.new_page()
         _apply_stealth(self._page)
         self._warmup()
+        self._started = True
         _log(self.logger, f"🌐 딥스캔 브라우저 시작 ({device_name}, headless={self.headless})")
-        return self
+        return True
 
     def _warmup(self) -> None:
         assert self._page is not None
@@ -232,7 +305,8 @@ class DeepRankBrowser:
 
     def between_keywords(self) -> None:
         """키워드 사이 휴식 — 봇 패턴 완화."""
-        assert self._page is not None
+        if not self._page:
+            return
         _human_pause(8.0, 14.0)
         try:
             self._page.goto("https://m.naver.com/", wait_until="domcontentloaded", timeout=20_000)
@@ -254,26 +328,47 @@ class DeepRankBrowser:
             f"🔍 [deep] '{keyword}' 상품 {product_id} (최대 {max_pages}페이지 ≒{max_pages * ITEMS_PER_PAGE}위)",
         )
 
-        api_rank = _api_rank_first(keyword, product_id, max_pages=max_pages, logger=self.logger)
+        api_rank, api_done = _api_rank_first(
+            keyword, product_id, max_pages=max_pages, logger=self.logger
+        )
         if api_rank is not None:
             _log(self.logger, f"✅ [API] 상품 {product_id}: {api_rank}위")
             return api_rank
 
-        if not self._page:
+        start_page, rank_offset = _playwright_start_page(max_pages, api_done)
+        if start_page == 0 or _skip_playwright():
+            if api_done:
+                cap = min(max_pages, NAVER_API_MAX_PAGES) * ITEMS_PER_PAGE
+                _log(self.logger, f"⚠️ API {cap}위 내 미발견 — Playwright 생략 (중복·봇 회피)")
             return None
 
-        start_page = NAVER_API_MAX_PAGES + 1 if max_pages > NAVER_API_MAX_PAGES else 1
-        rank_offset = (start_page - 1) * ITEMS_PER_PAGE if start_page > 1 else 0
+        if self._block_streak >= 2:
+            _log(self.logger, "⚠️ 연속 봇 차단 — 남은 키워드는 API만 사용")
+            return None
+
+        if not _PW_OK:
+            return None
+
+        self._ensure_browser()
+        assert self._page is not None
+
         cumulative = rank_offset
+        blocked_this_keyword = False
 
         for page_num in range(start_page, max_pages + 1):
             start = (page_num - 1) * ITEMS_PER_PAGE + 1
             _log(self.logger, f"   📄 {page_num}페이지 (start={start})")
 
             html = _goto_search_page(
-                self._page, keyword, start, logger=self.logger, retries=2
+                self._page,
+                keyword,
+                start,
+                logger=self.logger,
+                headless=self.headless,
+                retries=2,
             )
             if not html:
+                blocked_this_keyword = True
                 break
 
             page_ids = _extract_ordered_product_ids(html)
@@ -303,12 +398,15 @@ class DeepRankBrowser:
             for pid in page_ids:
                 cumulative += 1
                 if pid == product_id:
+                    self._block_streak = 0
                     _log(self.logger, f"✅ 상품 {product_id}: {cumulative}위 ({page_num}페이지)")
                     return cumulative
 
             if page_num < max_pages:
                 _human_pause(2.0, 4.5)
 
+        if blocked_this_keyword:
+            self._block_streak += 1
         _log(self.logger, f"⚠️ 상품 {product_id} {cumulative}위 이후 미발견 (Playwright)")
         return None
 
