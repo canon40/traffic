@@ -1,5 +1,9 @@
 {
-  "scanned_at": "2026-06-28T21:00:52.507442",
+  "scanned_at": "2026-06-29T23:47:05.961211",
+  "scan_mode": "deep",
+  "max_pages": 20,
+  "max_rank": 800,
+  "parallel": 3,
   "items": [
     {
       "keyword": "발수코팅",

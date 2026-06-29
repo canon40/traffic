@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-28",
+  "updated_at": "2026-06-29",
   "note": "스캔 순위 기준: 1~6위 유지, 7~30 hot, 31~70 candidate, 미발견=진입 boost",
   "maintain_only": [
     {

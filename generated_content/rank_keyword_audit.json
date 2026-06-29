@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-06-28T21:01:20.350834",
-  "criteria": "상품ID 기준 전체 검색(최대 70위 구간 집중 트래픽)",
+  "updated_at": "2026-06-29T23:47:05.977151",
+  "criteria": "상품ID 기준 전체 검색(최대 800위까지 탐색)",
   "maintain_max_rank": 6,
   "found_rank_tracking": [
     {
