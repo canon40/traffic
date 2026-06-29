@@ -36,6 +36,7 @@ def load_env(*, force: bool = False) -> bool:
 def api_keys_status() -> dict:
     load_env()
     return {
+        "naver_open_api": bool(os.environ.get("NAVER_CLIENT_ID") and os.environ.get("NAVER_CLIENT_SECRET")),
         "serpapi": bool(os.environ.get("SERPAPI_KEY")),
         "google_cse": bool(os.environ.get("GOOGLE_API_KEY") and os.environ.get("GOOGLE_CSE_ID")),
         "gcs": bool(os.environ.get("GCS_BUCKET") or os.environ.get("GCS_DATA_BUCKET")),

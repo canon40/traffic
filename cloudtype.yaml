@@ -19,7 +19,8 @@ options:
     - name: RANK_USE_API
       value: "1"
     # Cloudtype 대시보드에서 시크릿으로 설정 (저장소에 키 넣지 말 것):
-    # SERPAPI_KEY, GOOGLE_API_KEY, GOOGLE_CSE_ID, GCS_BUCKET, CRON_SECRET
+    # NAVER_CLIENT_ID, NAVER_CLIENT_SECRET (권장, 1000위)
+    # SERPAPI_KEY (보조), GCS_BUCKET, CRON_SECRET
     - name: DAILY_RANK_HOUR
       value: "9"
     - name: DAILY_RANK_MINUTE
