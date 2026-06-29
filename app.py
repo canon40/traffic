@@ -400,6 +400,17 @@ def api_seo_fixes_guide():
         return jsonify({"success": True, "content": f.read()})
 
 
+@app.route("/api/rank/entry-summary")
+def api_rank_entry_summary():
+    from rank_entry_report import build_entry_summary, write_reports
+
+    refresh = request.args.get("refresh", "0") == "1"
+    summary = build_entry_summary()
+    if refresh:
+        write_reports(summary)
+    return jsonify({"success": True, "summary": summary})
+
+
 @app.route("/api/keyword/progress")
 def api_keyword_progress():
     from keyword_progress import build_keyword_progress_board

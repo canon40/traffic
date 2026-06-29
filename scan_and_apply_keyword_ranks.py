@@ -446,6 +446,23 @@ def apply_scan(items: list[dict], *, record_history: bool = True, max_rank: int 
             detail = f"스캔: {it['rank']}위" if it["rank"] else f"미발견 ({max_rank}위 초과)"
             append_history(it["keyword"], store, rank, None, "순위스캔", detail)
 
+    try:
+        from rank_entry_report import build_entry_summary, write_reports
+
+        report_items = [
+            {
+                "keyword": it["keyword"],
+                "product_id": it["product_id"],
+                "product_url": it["product_url"],
+                "rank": it["rank"],
+                "zone": it.get("zone", ""),
+            }
+            for it in items
+        ]
+        write_reports(build_entry_summary(report_items))
+    except Exception:
+        pass
+
     return audit
 
 

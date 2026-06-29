@@ -171,6 +171,30 @@
 
         <div id="tab-dashboard" class="tab-content active">
             <div class="glass-panel">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3 style="font-size:0.95rem;margin:0;"><i class="fa-solid fa-bullseye"></i> 순위 진입 현황</h3>
+                    <button class="btn" style="padding:6px 12px;font-size:0.75rem;background:var(--accent-green);" onclick="loadRankEntrySummary(true)">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                    </button>
+                </div>
+                <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+                    <div class="stat-card">
+                        <div class="value" id="entry100Val" style="color:#34d399;">--</div>
+                        <div class="label">100위 이내</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value" id="top10Val" style="color:#60a5fa;">--</div>
+                        <div class="label">TOP 10</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value" id="notEnteredVal" style="color:#f87171;">--</div>
+                        <div class="label">미진입</div>
+                    </div>
+                </div>
+                <div id="rankEntryMeta" style="font-size:0.78rem;color:var(--text-sub);margin-top:10px;"></div>
+                <div id="rankEntryTopList" style="margin-top:12px;font-size:0.82rem;max-height:160px;overflow-y:auto;"></div>
+            </div>
+            <div class="glass-panel">
                 <h3 style="font-size:0.95rem;margin-bottom:12px;"><i class="fa-solid fa-ranking-star"></i> 최근 작업 결과</h3>
                 <div id="recentResults">
                     <div class="empty-state">아직 기록이 없습니다.<br>'지금 추적'을 눌러보세요.</div>
@@ -335,6 +359,7 @@
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById(tabId).classList.add('active');
+            if (tabId === 'tab-dashboard') loadRankEntrySummary();
             if (tabId === 'tab-chart') { loadKeywordProgress(); loadChart(); }
             if (tabId === 'tab-report') { loadTrafficReport(); loadWeeklyReport(); loadReport(); }
             if (tabId === 'tab-seo') loadLatestAudit();
@@ -629,6 +654,31 @@
             }
         }
 
+        async function loadRankEntrySummary(refresh) {
+            const url = '/api/rank/entry-summary' + (refresh ? '?refresh=1' : '');
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                const s = data.summary;
+                if (!s) return;
+                const total = s.total || 0;
+                document.getElementById('entry100Val').textContent =
+                    total ? `${s.entered_100}/${total}` : '--';
+                document.getElementById('top10Val').textContent = s.top10 ?? '--';
+                document.getElementById('notEnteredVal').textContent = s.not_entered ?? '--';
+                document.getElementById('rankEntryMeta').textContent =
+                    `TOP50 ${s.top50} · 진입률 ${s.entered_100_pct}% · 갱신 ${s.generated_at || ''}`;
+                const top = (s.in_100_keywords || []).slice(0, 12);
+                document.getElementById('rankEntryTopList').innerHTML = top.length
+                    ? top.map(r => `<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <strong style="color:#60a5fa;">${r.rank}위</strong> ${r.keyword}
+                      </div>`).join('')
+                    : '<div class="empty-state" style="padding:12px;">스캔 후 표시됩니다. run_rank_report.bat 실행</div>';
+            } catch (e) {
+                document.getElementById('rankEntryMeta').textContent = '진입 현황 로드 실패';
+            }
+        }
+
         async function loadKeywordProgress() {
             const box = document.getElementById('keywordProgressBox');
             const summary = document.getElementById('keywordProgressSummary');
@@ -785,6 +835,7 @@
         setInterval(() => { updateStatus(); updateLogs(); }, 5000);
         updateStatus();
         updateLogs();
+        loadRankEntrySummary();
         loadLatestAudit();
         loadConfig();
 
