@@ -7,7 +7,8 @@
     "coating_c": "https://smartstore.naver.com/nanumlab/products/12809532969",
     "coating_d": "https://smartstore.naver.com/nanumlab/products/12809541448",
     "cleaner": "https://smartstore.naver.com/nanumlab/products/12808787263",
-    "coating_general": "https://smartstore.naver.com/nanumlab/products/12634187514"
+    "coating_general": "https://smartstore.naver.com/nanumlab/products/12634187514",
+    "bike_coating": "https://smartstore.naver.com/nanumlab/products/12808836901"
   },
   "target_urls": [
     "https://smartstore.naver.com/nanumlab/products/12639296730",
@@ -17,7 +18,8 @@
     "https://smartstore.naver.com/nanumlab/products/12809532969",
     "https://smartstore.naver.com/nanumlab/products/12809541448",
     "https://smartstore.naver.com/nanumlab/products/12808787263",
-    "https://smartstore.naver.com/nanumlab/products/12634187514"
+    "https://smartstore.naver.com/nanumlab/products/12634187514",
+    "https://smartstore.naver.com/nanumlab/products/12808836901"
   ],
   "keywords": [
     "가구 리빙코트 방법",
@@ -29,16 +31,16 @@
     "가구코팅 주방",
     "가구코팅 추천",
     "광택",
-    "나눔랩",
-    "나눔랩 세정제",
-    "나눔랩 코팅제",
     "나무 가구 실내코팅",
     "듀라코트 리빙코트",
     "리빙코트",
     "리빙코트 원목",
     "리빙코트 처음 사용법",
+    "바이크 코팅제",
+    "바이크코팅제",
     "발수코팅",
     "세차 관리제",
+    "세차세정제",
     "셀프 유리막 코팅",
     "셀프 유리막코팅제",
     "셀프 차 코팅",
@@ -51,6 +53,7 @@
     "신차 차 코팅",
     "실내코팅 비추천 이유",
     "실내코팅 원목",
+    "오토바이 코팅제",
     "욕실 가구코팅",
     "원목 리빙코트",
     "유리막",
@@ -74,6 +77,7 @@
     "차량용 유리막코팅",
     "차량코팅제 어떤게 좋아요",
     "차량코팅제 직접",
+    "코팅제",
     "퍼마코트 가격 비교",
     "퍼마코트 사용 후기",
     "퍼마코트 자동차 코팅제",
@@ -137,7 +141,7 @@
       "zone": "entry"
     },
     {
-      "keyword": "나눔랩",
+      "keyword": "코팅제",
       "product_key": "permacoat",
       "product_url": "https://smartstore.naver.com/nanumlab/products/12639296730",
       "mode": "boost",
@@ -461,7 +465,7 @@
       "zone": "maintain"
     },
     {
-      "keyword": "나눔랩 코팅제",
+      "keyword": "코팅제",
       "product_key": "coating_a",
       "product_url": "https://smartstore.naver.com/nanumlab/products/12808820913",
       "mode": "boost",
@@ -479,7 +483,7 @@
       "zone": "entry"
     },
     {
-      "keyword": "나눔랩 세정제",
+      "keyword": "세차세정제",
       "product_key": "cleaner",
       "product_url": "https://smartstore.naver.com/nanumlab/products/12808787263",
       "mode": "boost",
@@ -497,7 +501,7 @@
       "zone": "entry"
     },
     {
-      "keyword": "나눔랩 코팅제",
+      "keyword": "유리막코팅제",
       "product_key": "coating_c",
       "product_url": "https://smartstore.naver.com/nanumlab/products/12809532969",
       "mode": "boost",
@@ -515,7 +519,7 @@
       "zone": "entry"
     },
     {
-      "keyword": "나눔랩 코팅제",
+      "keyword": "유리막코팅제",
       "product_key": "coating_d",
       "product_url": "https://smartstore.naver.com/nanumlab/products/12809541448",
       "mode": "boost",
@@ -533,7 +537,7 @@
       "zone": "entry"
     },
     {
-      "keyword": "나눔랩 코팅제",
+      "keyword": "코팅제",
       "product_key": "coating_b",
       "product_url": "https://smartstore.naver.com/nanumlab/products/12809519826",
       "mode": "boost",
@@ -551,7 +555,7 @@
       "zone": "entry"
     },
     {
-      "keyword": "나눔랩 코팅제",
+      "keyword": "코팅제",
       "product_key": "coating_general",
       "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
       "mode": "boost",
@@ -698,6 +702,33 @@
       "keyword": "유리막코팅제 장마철",
       "product_key": "coating_general",
       "product_url": "https://smartstore.naver.com/nanumlab/products/12634187514",
+      "mode": "boost",
+      "priority": 10,
+      "last_rank": null,
+      "zone": "entry"
+    },
+    {
+      "keyword": "바이크 코팅제",
+      "product_key": "bike_coating",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12808836901",
+      "mode": "boost",
+      "priority": 10,
+      "last_rank": null,
+      "zone": "entry"
+    },
+    {
+      "keyword": "오토바이 코팅제",
+      "product_key": "bike_coating",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12808836901",
+      "mode": "boost",
+      "priority": 10,
+      "last_rank": null,
+      "zone": "entry"
+    },
+    {
+      "keyword": "바이크코팅제",
+      "product_key": "bike_coating",
+      "product_url": "https://smartstore.naver.com/nanumlab/products/12808836901",
       "mode": "boost",
       "priority": 10,
       "last_rank": null,

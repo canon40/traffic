@@ -628,26 +628,29 @@ async def run_boost_session(target: dict, keyword: str) -> dict:
             except Exception:
                 pass
 
-            # 상품 링크 직접 탐색
-            product_link = page.locator(f'a[href*="{product_id}"]')
+            # 상품 링크 점진적 스크롤 탐색 및 클릭
             clicked_from_search = False
-            if await product_link.count() > 0:
-                print(f"✅ 검색 결과에서 상품 발견 → 클릭")
-                await product_link.first.scroll_into_view_if_needed()
-                await asyncio.sleep(random.uniform(0.5, 1.5))
-                await product_link.first.click()
-                clicked_from_search = True
-                await asyncio.sleep(random.uniform(2.0, 4.0))
-            else:
-                # 검색 결과에서 못 찾으면 블로그 경유 후 직접 이동
-                print(f"⚠️ 검색 결과 미발견 → 블로그 경유 진입")
-                blog = random.choice(BLOGS)
-                await page.goto(blog.replace('blog.naver.com', 'm.blog.naver.com'), wait_until="domcontentloaded")
-                await asyncio.sleep(random.uniform(3.0, 6.0))
-                await _human_scroll(page, scroll_spd, jitter)
-                # 상품 페이지로 이동
-                await page.evaluate(f"window.location.href = '{product_url}'")
-                await asyncio.sleep(random.uniform(2.0, 4.0))
+            max_scrolls = 6
+            for scroll_idx in range(max_scrolls):
+                product_link = page.locator(f'a[href*="{product_id}"]')
+                if await product_link.count() > 0:
+                    print(f"✅ 검색 결과에서 상품 발견 (스크롤 {scroll_idx}회) → 클릭")
+                    await product_link.first.scroll_into_view_if_needed()
+                    await asyncio.sleep(random.uniform(0.5, 1.5))
+                    await product_link.first.click()
+                    clicked_from_search = True
+                    await asyncio.sleep(random.uniform(2.0, 4.0))
+                    break
+                
+                if scroll_idx < max_scrolls - 1:
+                    print(f"  [SERP] 상품 미발견, 추가 스크롤 ({scroll_idx+1}/{max_scrolls})...")
+                    await page.mouse.wheel(0, random.randint(1000, 1600))
+                    await asyncio.sleep(random.uniform(1.5, 3.0))
+
+            if not clicked_from_search:
+                print("❌ 검색 결과에서 상품을 찾을 수 없습니다. 밴 방지를 위해 세션을 중단합니다.")
+                await browser.close()
+                return {'success': False, 'start_rank': start_rank, 'end_rank': start_rank, 'dwell': 0}
 
             if await _is_bot_detected(page):
                 print("🚨 상품 이동 후 봇 감지 — 중단")

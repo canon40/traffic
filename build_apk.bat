@@ -24,10 +24,23 @@ echo APK 빌드 시작... (수 분~30분 소요될 수 있습니다)
 echo Windows: 설정 - 개발자용 - 개발자 모드 ON 권장 (심볼릭 링크)
 echo.
 
+echo [Mobile Build] 임시 requirements.txt 생성 (모바일 전용 경량화)...
+copy /Y requirements.txt requirements.txt.bak >nul
+echo flet^>=0.24.0 > requirements.txt
+echo requests^>=2.31.0 >> requirements.txt
+echo beautifulsoup4^>=4.12.0 >> requirements.txt
+echo python-dotenv^>=1.0.0 >> requirements.txt
+
 set FLET_CLI_NO_RICH_OUTPUT=1
 flet build apk --project nanumlab-seo-manager --module-name main --product "Nanumlab SEO" --org com.nanumlab --android-permissions android.permission.INTERNET=true --no-rich-output --yes
 
-if %ERRORLEVEL% neq 0 (
+set BUILD_STATUS=%ERRORLEVEL%
+
+echo [Mobile Build] 원본 requirements.txt 복원 중...
+copy /Y requirements.txt.bak requirements.txt >nul
+del requirements.txt.bak
+
+if %BUILD_STATUS% neq 0 (
     echo.
     echo flet 빌드 단계 실패. Flutter로 직접 빌드 시도...
     set SERIOUS_PYTHON_SITE_PACKAGES=%CD%\build\site-packages

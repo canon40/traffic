@@ -79,7 +79,7 @@ class SafetyObserver:
         self._blocked: bool = False
         self._block_reason: str = ""
 
-  _IGNORE_429_IN_URL = (
+    _IGNORE_429_IN_URL = (
         ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".woff", ".svg",
         "analytics", "tracking", "pixel", "beacon",
     )
@@ -440,51 +440,76 @@ def handle_serp_browse(
 ) -> tuple[bool, Optional[str], Optional[int]]:
     """
     [State: SERP_BROWSE]
-    SERP(?? ?? ???)?? ?? ?? ??? ?? ?????.
-    target_product_id? ??? ?? ?? URL? ?? ?????.
+    SERP(검색 결과 페이지)에서 등록 상품 검색 및 선택.
+    target_product_id가 지정된 경우 상품 ID를 우선 검출.
     반환: (발견여부, URL, SERP내 순위)
     """
-    log.info("[SERP] ?? ?? ??? ?? ??")
+    log.info("[SERP] 등록 상품 검색 시작 (스크롤 탐색)")
 
-    gauss_sleep(random.uniform(5, 10), 1.0)
-    human_scroll(page, total_distance=random.randint(800, 1800))
+    gauss_sleep(random.uniform(3, 7), 1.0)
     random_mouse_move(page)
 
-    all_links: list[str] = []
-    for sel in SERP_ITEM_SELECTORS:
-        try:
-            elements = page.query_selector_all(sel)
-            for el in elements:
-                href = el.get_attribute("href")
-                if href and href.startswith("http"):
-                    all_links.append(href)
-        except Exception:
-            pass
+    max_scrolls = 6
+    target_links = []
+    all_links = []
+    found = False
+    serp_rank = None
 
-    all_links = list(dict.fromkeys(all_links))
+    for scroll_idx in range(max_scrolls):
+        # Extract links
+        all_links = []
+        for sel in SERP_ITEM_SELECTORS:
+            try:
+                elements = page.query_selector_all(sel)
+                for el in elements:
+                    href = el.get_attribute("href")
+                    if href and href.startswith("http"):
+                        all_links.append(href)
+            except Exception:
+                pass
+        all_links = list(dict.fromkeys(all_links))
 
-    store_links = [h for h in all_links if target_store_id.lower() in h.lower()]
-    if target_product_id:
-        product_links = [h for h in store_links if target_product_id in h]
-        target_links = product_links or store_links
-    else:
-        target_links = store_links
+        # Check target links: Product ID has priority
+        if target_product_id:
+            target_links = [h for h in all_links if target_product_id in h]
+        if not target_links:
+            target_links = [h for h in all_links if target_store_id.lower() in h.lower()]
+
+        if target_links:
+            found = True
+            needle = target_product_id if target_product_id else target_store_id
+            for idx, href in enumerate(all_links, 1):
+                if needle in href:
+                    serp_rank = idx
+                    break
+            log.info(f"[SERP] 상품 발견! (예상 순위: {serp_rank}위, 스크롤 횟수: {scroll_idx})")
+            break
+
+        # If not found, scroll down to lazy load more items
+        if scroll_idx < max_scrolls - 1:
+            dist = random.randint(1000, 1600)
+            log.info(f"  [SERP] 상품 미발견, 추가 스크롤 ({scroll_idx+1}/{max_scrolls}) - {dist}px")
+            human_scroll(page, total_distance=dist)
+            gauss_sleep(random.uniform(1.5, 3.0), 0.5)
+            random_mouse_move(page)
 
     competitor_links = [h for h in all_links if h not in target_links]
 
     log.info(
-        f"[SERP] ??: {len(all_links)} | ??: {len(target_links)} | ???: {len(competitor_links)}"
-        + (f" | ??ID: {target_product_id}" if target_product_id else "")
+        f"[SERP] 검색 페이지 분석 완료 - 전체 링크: {len(all_links)} | 타겟 링크: {len(target_links)} | 경쟁사 링크: {len(competitor_links)}"
+        + (f" | 타겟 ID: {target_product_id}" if target_product_id else "")
     )
 
     sim = HumanSimulator(page)
     skip_competitors = os.environ.get("TRAFFIC_SKIP_COMPETITORS", "").lower() in ("1", "true", "yes")
-    if competitor_links and not skip_competitors:
+    
+    # 가끔 경쟁사 상품 둘러보기 시뮬레이션 (자연스러운 패턴 형성)
+    if competitor_links and not skip_competitors and found and random.random() < 0.7:
         competitors_to_visit = random.sample(
             competitor_links, min(random.randint(1, 2), len(competitor_links))
         )
         for comp_url in competitors_to_visit:
-            log.info(f"  [??? ??] {comp_url[:60]}...")
+            log.info(f"  [경쟁사 둘러보기] {comp_url[:60]}...")
             try:
                 comp_el = page.query_selector(f'a[href*="{comp_url[:50]}"]')
                 if comp_el and sim.click_element(comp_el):
@@ -496,26 +521,35 @@ def handle_serp_browse(
                 page.go_back(wait_until="domcontentloaded", timeout=10_000)
                 gauss_sleep(random.gauss(2.5, 0.8), min_s=1.0)
             except Exception as e:
-                log.warning(f"  [??? ??] ??: {e}")
+                log.warning(f"  [경쟁사 둘러보기] 에러: {e}")
                 try:
                     page.go_back()
                 except Exception:
                     pass
 
-    human_scroll(page, total_distance=random.randint(500, 1200))
-    gauss_sleep(random.gauss(4.0, 1.2), min_s=1.5)
-
-    if target_links:
-        needle = target_product_id or target_store_id
-        serp_rank: Optional[int] = None
-        for idx, href in enumerate(all_links, 1):
-            if needle in href:
-                serp_rank = idx
-                break
+    if found and target_links:
+        needle = target_product_id if target_product_id else target_store_id
         target_el = page.query_selector(f'a[href*="{needle}"]')
+        if not target_el and target_product_id:
+            target_el = page.query_selector(f'a[href*="{target_product_id}"]')
+            
         if target_el:
-            sim.click_element(target_el)
+            log.info(f"[SERP] 타겟 상품 클릭 이동: {target_links[0][:60]}...")
+            try:
+                target_el.scroll_into_view_if_needed()
+                gauss_sleep(random.uniform(0.5, 1.5), 0.3)
+                sim.click_element(target_el)
+                gauss_sleep(random.uniform(2.0, 4.0), 0.5)
+            except Exception as e:
+                log.warning(f"[SERP] 엘리먼트 클릭 실패 ({e}), direct URL 이동 수행")
+                page.goto(target_links[0], wait_until="domcontentloaded", timeout=20_000)
+        else:
+            log.info(f"[SERP] 엘리먼트 쿼리 실패, direct URL 이동 수행: {target_links[0][:60]}...")
+            page.goto(target_links[0], wait_until="domcontentloaded", timeout=20_000)
+            
         return True, target_links[0], serp_rank
+        
+    log.warning("[SERP] 검색 결과 내에 등록 상품이 없어 세션을 종료합니다 (어설픈 우회 방지).")
     return False, None, None
 
 
@@ -671,15 +705,8 @@ def run_session(
                         result["target_url_visited"] = href
                         state = State.TARGET_VISIT
                     else:
-                        fallback_url = preferred_url or (random.choice(target_urls) if target_urls else "")
-                        if fallback_url:
-                            log.info(f"[SERP] fallback URL: {fallback_url[:60]}...")
-                            result["target_url_visited"] = fallback_url
-                            result["target_found"] = False
-                            state = State.TARGET_VISIT
-                        else:
-                            log.info("[SERP] no target, session end")
-                            state = State.DONE
+                        log.info("[SERP] 타겟 상품을 검색 결과에서 찾지 못했습니다. 밴 방지를 위해 세션을 종료합니다.")
+                        state = State.DONE
 
                 elif state == State.TARGET_VISIT:
                     visit_url = result["target_url_visited"]
