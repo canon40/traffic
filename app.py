@@ -90,13 +90,39 @@ def add_log(msg):
 
 def scheduler_loop():
     global scheduler_running, last_completion_report
+    import json
+    from pathlib import Path
+    from app_resources import get_storage_dir
     add_log("🚀 순위 추적 스케줄러가 시작되었습니다.")
     cycle = 0
+    state_file = Path(get_storage_dir()) / ".scheduler_state.json"
 
     while not stop_event.is_set():
         cycle += 1
         config = load_config()
         interval = max(5, int(config.get("track_interval_minutes", 60)))
+
+        # 컨테이너 재시작 시 중복 스윕 방지
+        now = time.time()
+        last_sweep = 0
+        if state_file.exists():
+            try:
+                with state_file.open(encoding="utf-8") as f:
+                    state_data = json.load(f)
+                    last_sweep = state_data.get("last_sweep_at", 0)
+            except Exception:
+                pass
+        
+        elapsed_m = (now - last_sweep) / 60
+        if elapsed_m < interval and cycle == 1:
+            remaining_m = int(interval - elapsed_m)
+            add_log(f"⏳ 최근 순위 추적이 {elapsed_m:.1f}분 전에 완료되었습니다. 중복 실행 방지를 위해 {remaining_m}분 후 첫 주기 시작.")
+            for _ in range(remaining_m * 6):
+                if stop_event.is_set():
+                    break
+                time.sleep(10)
+            if stop_event.is_set():
+                break
 
         add_log(f"🔄 [사이클 {cycle}] 순위 추적 + SEO 점검 시작")
         results = track_all_keywords(logger=add_log)
@@ -112,6 +138,21 @@ def scheduler_loop():
         try:
             from data_store import push_to_cloud
             push_to_cloud(("rank_history.csv",))
+        except Exception:
+            pass
+
+        # 스윕 완료 시간 저장
+        try:
+            state_data = {}
+            if state_file.exists():
+                try:
+                    with state_file.open(encoding="utf-8") as f:
+                        state_data = json.load(f)
+                except Exception:
+                    pass
+            state_data["last_sweep_at"] = time.time()
+            with state_file.open("w", encoding="utf-8") as f:
+                json.dump(state_data, f, ensure_ascii=False, indent=2)
         except Exception:
             pass
 

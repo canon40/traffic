@@ -21,7 +21,7 @@ from env_loader import load_env
 SERPAPI_URL = "https://serpapi.com/search.json"
 CSE_URL = "https://www.googleapis.com/customsearch/v1"
 NAVER_SHOP_URL = "https://openapi.naver.com/v1/search/shop.json"
-DEFAULT_MAX_PAGES = 20
+DEFAULT_MAX_PAGES = 13
 NAVER_MAX_ITEMS = 1000
 
 
@@ -236,12 +236,15 @@ def check_product_rank_api(
 
     max_items = min(NAVER_MAX_ITEMS, max_pages * 40)
 
-    rank = check_product_rank_naver_open(
-        keyword, product_id, max_items=max_items, logger=logger
-    )
-    if rank is not None:
-        return rank
+    # 1. Naver Open API 가 설정되어 있으면 이를 우선 사용하고 결과를 즉시 반환 (미노출 시 SerpAPI 낭비 방지)
+    cid = os.environ.get("NAVER_CLIENT_ID", "").strip()
+    secret = os.environ.get("NAVER_CLIENT_SECRET", "").strip()
+    if cid and secret:
+        return check_product_rank_naver_open(
+            keyword, product_id, max_items=max_items, logger=logger
+        )
 
+    # 2. Naver API가 없을 때만 SerpAPI와 Google CSE로 폴백
     rank = check_product_rank_serpapi(
         keyword, product_id, max_pages=max_pages, logger=logger
     )

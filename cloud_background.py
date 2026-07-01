@@ -139,16 +139,38 @@ def _start_flask_scheduler() -> None:
 
 def _rank_sweep_loop() -> None:
     """Playwright 없이 순위 API 스윕 (ENABLE_CLOUD_TRAFFIC와 독립)."""
+    import json
     interval_h = int(os.environ.get("CLOUD_RANK_SWEEP_INTERVAL_HOURS", "4"))
+    state_file = Path(os.environ.get("DATA_DIR", str(ROOT))) / ".scheduler_state.json"
+    
     time.sleep(120)
     while True:
         try:
+            # 컨테이너 재시작 시 중복 스윕 방지
+            now = time.time()
+            last_sweep = 0
+            if state_file.exists():
+                try:
+                    with state_file.open(encoding="utf-8") as f:
+                        state_data = json.load(f)
+                        last_sweep = state_data.get("last_sweep_at", 0)
+                except Exception:
+                    pass
+            
+            elapsed_h = (now - last_sweep) / 3600
+            if elapsed_h < interval_h:
+                remaining_sec = int((interval_h - elapsed_h) * 3600)
+                _log(f"최근 스윕 완료 ({elapsed_h:.1f}시간 전). 다음 스윕까지 {remaining_sec}초 대기 (재시작 중복 스윕 스킵).")
+                time.sleep(max(60, remaining_sec))
+                continue
+
             _log("클라우드 순위 스윕 시작")
             from rank_tracker import build_completion_report, track_all_keywords
             results = track_all_keywords(logger=_log)
             report = build_completion_report(results)
             _log(report.get("summary", "순위 스윕 완료"))
             _push_cloud_data()
+            
             # 스캔 결과 JSON도 GCS에 (대시보드 동기화)
             try:
                 from data_store import push_to_cloud
@@ -158,6 +180,22 @@ def _rank_sweep_loop() -> None:
                 ))
             except Exception:
                 pass
+                
+            # 스윕 완료 시간 저장
+            try:
+                state_data = {}
+                if state_file.exists():
+                    try:
+                        with state_file.open(encoding="utf-8") as f:
+                            state_data = json.load(f)
+                    except Exception:
+                        pass
+                state_data["last_sweep_at"] = time.time()
+                with state_file.open("w", encoding="utf-8") as f:
+                    json.dump(state_data, f, ensure_ascii=False, indent=2)
+            except Exception:
+                pass
+                
         except Exception as e:
             _log(f"순위 스윕 오류: {e}")
         time.sleep(max(3600, interval_h * 3600))
@@ -206,7 +244,8 @@ def start_cloud_services() -> None:
         t_daily.start()
         _threads.append(t_daily)
 
-        if _env_true("ENABLE_CLOUD_RANK_SWEEP", "1"):
+        # Flask 스케줄러가 활성화되어 있는 경우, 중복 순위 스윕 루프(rank-sweep) 실행 방지
+        if _env_true("ENABLE_CLOUD_RANK_SWEEP", "1") and not _env_true("AUTO_START_SCHEDULER", "1"):
             t_sweep = threading.Thread(target=_rank_sweep_loop, daemon=True, name="rank-sweep")
             t_sweep.start()
             _threads.append(t_sweep)
