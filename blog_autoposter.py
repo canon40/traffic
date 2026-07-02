@@ -97,6 +97,11 @@ class BlogAutoContentEngine:
         self.logger(f"📝 [블로그 엔진] {msg}")
 
     def load_credentials(self):
+        self.config['tistory_access_token'] = ''
+        self.config['tistory_blog_name'] = ''
+        self.config['gemini_api_key'] = ''
+        
+        # 1. security_vault/credentials.json 로드 시도
         cred_path = os.path.join("security_vault", "credentials.json")
         if os.path.exists(cred_path):
             try:
@@ -109,11 +114,28 @@ class BlogAutoContentEngine:
                 self.log("보안 설정(credentials.json) 로드 성공")
             except Exception as e:
                 self.log(f"보안 설정 로드 오류: {e}")
-        else:
-            self.log("credentials.json 없음 — 기본 설정 사용")
-            self.config['tistory_access_token'] = ''
-            self.config['tistory_blog_name'] = ''
-            self.config['gemini_api_key'] = ''
+                
+        # 2. blogauto/login2/accounts.json 에서 Gemini 키 로드 시도 (통합 연동)
+        if not self.config.get('gemini_api_key'):
+            from pathlib import Path
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            paths = [
+                Path("D:/@code/antigravity/blogauto/login2/accounts.json"),
+                Path(base_dir).resolve().parents[0] / "antigravity" / "blogauto" / "login2" / "accounts.json",
+                Path(base_dir).resolve().parents[1] / "blogauto" / "login2" / "accounts.json",
+            ]
+            for p in paths:
+                if p.exists():
+                    try:
+                        with open(p, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            key = data.get("gemini_key") or data.get("vertex_api_key")
+                            if key and "AIzaSy" in key:
+                                self.config['gemini_api_key'] = key
+                                self.log(f"🔗 blogauto 설정을 통해 Gemini API 키를 성공적으로 가져왔습니다.")
+                                break
+                    except Exception:
+                        pass
 
     def _init_ai(self):
         """AI 제공자 초기화 (Gemini → Ollama → 내장 템플릿 순 fallback)"""
@@ -216,20 +238,42 @@ class BlogAutoContentEngine:
             f'<p style="font-size:0.85em;color:#888;text-align:center;">'
             f'나눔랩 {main_kw} 전문가 시공 과정</p><br>'
         )
-        # 첫 번째 </h2> 뒤에 이미지 삽입
         if '</h2>' in body_html:
             body_html = body_html.replace('</h2>', f'</h2>{img_tag}', 1)
         else:
             body_html = img_tag + body_html
 
+        # 키워드 기반으로 적절한 상품 URL 및 상품 라벨 감지
+        kw = main_kw.lower()
+        PRODUCT_URL_MAP = {
+            "auto": "https://smartstore.naver.com/nanumlab/products/12639296730",  # 퍼마코트 자동차 코팅제
+            "bike": "https://smartstore.naver.com/nanumlab/products/12808836901",  # 나눔랩 바이크 코팅제
+            "living": "https://smartstore.naver.com/nanumlab/products/10713170202", # 듀라코트 리빙코트
+        }
+        PRODUCT_LABELS = {
+            "auto": "자동차 코팅제",
+            "bike": "바이크 코팅제",
+            "living": "리빙 코팅제",
+        }
+        
+        if any(x in kw for x in ("바이크", "오토바이", "이륜차", "bike")):
+            choice = "bike"
+        elif any(x in kw for x in ("가구", "원목", "싱크대", "욕실", "타일", "리빙", "식탁", "living", "곰팡이")):
+            choice = "living"
+        else:
+            choice = "auto"
+            
+        url = PRODUCT_URL_MAP[choice]
+        label = PRODUCT_LABELS[choice]
+        
         # 스토어 링크 마무리
         store_link = (
             f'<br><div style="text-align:center;margin:24px 0;">'
-            f'<a href="{self.config["car_product_url"]}" target="_blank" '
+            f'<a href="{url}" target="_blank" '
             f'style="display:inline-block;background:linear-gradient(135deg,#2db400,#00a060);'
             f'color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;'
             f'font-weight:bold;font-size:1.1em;box-shadow:0 4px 12px rgba(0,0,0,0.2);">'
-            f'👉 나눔랩 퍼마코트 {main_kw} 공식 스토어 바로가기</a></div>'
+            f'👉 나눔랩 {label} ({main_kw}) 공식 스토어 바로가기</a></div>'
         )
         body_html += store_link
         return body_html
@@ -384,12 +428,43 @@ class BlogAutoContentEngine:
             return False
         return True
 
+    def get_traffic_keywords(self) -> list[str]:
+        """traffic_config.json에서 미노출 키워드를 가져옵니다."""
+        import json
+        from pathlib import Path
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        path = Path(base_dir) / "traffic_config.json"
+        if not path.exists():
+            return []
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            tasks = data.get("keyword_tasks") or []
+            unranked = []
+            for t in tasks:
+                rank = t.get("last_rank")
+                kw = t.get("keyword", "")
+                if rank is None or rank == 0 or rank > 500 or str(rank).strip() in ("", "None"):
+                    if kw:
+                        unranked.append(kw)
+            return list(set(unranked))
+        except Exception:
+            return []
+
     def run_single_cycle(self) -> bool:
         """1회 발행 주기"""
         if not self.check_daily_limit():
             return False
 
-        main_kw = random.choice(MIX_DB['main'])
+        # 트래픽 미노출 키워드 동적 로드 시도
+        traffic_kws = self.get_traffic_keywords()
+        if traffic_kws:
+            main_kw = random.choice(traffic_kws)
+            self.log(f"🎯 트래픽 미노출 키워드 선택됨: {main_kw}")
+        else:
+            main_kw = random.choice(MIX_DB['main'])
+            self.log(f"💡 기본 키워드 선택됨: {main_kw}")
+            
         sub_kw = random.choice(MIX_DB['sub'])
 
         title, content = self.call_ai_api(main_kw, sub_kw)

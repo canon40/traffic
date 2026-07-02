@@ -205,6 +205,30 @@ class SeoBlogCampaignEngine:
 
     def _init_ai(self):
         gemini_key = self.creds.get("gemini_api_key", "").strip()
+        
+        # 만약 credentials.json에 키가 없으면 blogauto의 accounts.json에서 로드 시도 (통합 연동)
+        if not gemini_key:
+            import os
+            from pathlib import Path
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            paths = [
+                Path("D:/@code/antigravity/blogauto/login2/accounts.json"),
+                Path(base_dir).resolve().parents[0] / "antigravity" / "blogauto" / "login2" / "accounts.json",
+                Path(base_dir).resolve().parents[1] / "blogauto" / "login2" / "accounts.json",
+            ]
+            for p in paths:
+                if p.exists():
+                    try:
+                        with open(p, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            key = data.get("gemini_key") or data.get("vertex_api_key")
+                            if key and "AIzaSy" in key:
+                                gemini_key = key
+                                self.log(f"🔗 blogauto 설정을 통해 Gemini API 키를 성공적으로 연동했습니다.")
+                                break
+                    except Exception:
+                        pass
+
         if GEMINI_AVAILABLE and gemini_key:
             try:
                 genai.configure(api_key=gemini_key)
