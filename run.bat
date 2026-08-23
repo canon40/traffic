@@ -1,6 +1,7 @@
 @echo off
 title Permacoat SEO Monitor
 chcp 65001 > nul
+cd /d "%~dp0"
 cls
 
 echo =============================================================
@@ -9,9 +10,15 @@ echo   모바일 앱: run_mobile.bat  /  APK: build_apk.bat
 echo =============================================================
 echo.
 
-echo [1단계] 라이브러리 설치 중...
-python -m pip install --upgrade pip > nul 2>&1
-python -m pip install -r requirements.txt -q
+call "%~dp0_find_py.cmd"
+if errorlevel 1 (
+    pause
+    exit /b 1
+)
+
+echo [1단계] 라이브러리 설치 중... (%PYEXE%)
+"%PYEXE%" -m pip install --upgrade pip > nul 2>&1
+"%PYEXE%" -m pip install -r requirements.txt -q
 if %ERRORLEVEL% neq 0 (
     echo 파이썬 또는 pip 설치를 확인해 주세요.
     pause
@@ -37,5 +44,5 @@ echo =============================================================
 echo.
 
 echo [3단계] 서버 실행 중...
-python app.py
+"%PYEXE%" app.py
 pause

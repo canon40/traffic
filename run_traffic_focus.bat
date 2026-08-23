@@ -1,18 +1,25 @@
 @echo off
 chcp 65001 >nul
 title 나눔랩 자동차코팅제 집중 트래픽 엔진
+cd /d "%~dp0"
 
 echo.
 echo ============================================================
 echo   나눔랩 자동차코팅제 집중 순위 상승 엔진
-echo   - 집중 키워드: 자동차코팅제 (75%% 집중)
+echo   - 집중 키워드: 자동차코팅제
 echo   - 세션 간격: 최소 15분
 echo   - 봇 감지 시: 45분 자동 쿨다운
 echo ============================================================
 echo.
 
-echo [준비] 라이브러리 확인 중...
-py -3.10 -m pip install requests beautifulsoup4 playwright playwright-stealth pandas -q
+call "%~dp0_find_py.cmd"
+if errorlevel 1 (
+  pause
+  exit /b 1
+)
+echo [준비] 라이브러리 확인 중... (%PYEXE%)
+"%PYEXE%" -m pip install -q requests beautifulsoup4 playwright playwright-stealth pandas
+"%PYEXE%" -m playwright install chromium
 echo [OK] 준비 완료
 
 echo.
@@ -25,15 +32,15 @@ set /p mode="선택 (1 또는 2): "
 if "%mode%"=="1" (
     echo.
     echo [테스트] 1회 세션 실행 중...
-    py -3.10 traffic_single.py --test
+    "%PYEXE%" -u traffic_single.py --test
 ) else if "%mode%"=="2" (
     echo.
     echo [엔진] 24시간 연속 실행 시작 (Ctrl+C로 종료)
-    py -3.10 traffic_single.py --engine
+    "%PYEXE%" -u traffic_single.py --engine
 ) else (
     echo.
     echo [기본] 1회 테스트 실행
-    py -3.10 traffic_single.py --test
+    "%PYEXE%" -u traffic_single.py --test
 )
 
 echo.

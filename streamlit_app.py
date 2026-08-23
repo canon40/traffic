@@ -2,6 +2,7 @@ import streamlit as st
 import subprocess
 import pandas as pd
 import os
+import sys
 import json
 import time
 import io
@@ -18,7 +19,7 @@ except ImportError:
 
 try:
     from dotenv import load_dotenv
-    _env = Path(r"d:\@code\GEMMA4\Antigravity_Workspace\.env")
+    _env = Path(__file__).resolve().parent / ".env"
     if _env.exists():
         load_dotenv(_env)
 except ImportError:
@@ -235,9 +236,13 @@ with col_main:
                     json.dump(config, f, ensure_ascii=False, indent=2)
 
                 # traffic_service.py 실행 (Playwright 기반 — API 불필요)
+                log_path = Path(__file__).resolve().parent / "traffic_service.log"
+                log_f = open(log_path, "a", encoding="utf-8")
                 proc = subprocess.Popen(
-                    ["python", "-u", "traffic_service.py", "--campaign", "--headless"],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                    [sys.executable, "-u", "traffic_service.py", "--campaign", "--headless"],
+                    stdout=log_f,
+                    stderr=log_f,
+                    cwd=str(Path(__file__).resolve().parent),
                 )
                 Path(PID_FILE).write_text(str(proc.pid))
                 st.success(f"✅ 순위 부스팅 캠페인 시작! {len(selected_categories)}개 키워드 (미발견 집중 / 1~6위 유지)")

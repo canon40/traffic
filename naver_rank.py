@@ -11,11 +11,7 @@ from urllib.parse import quote_plus
 
 from playwright.sync_api import sync_playwright
 
-try:
-    from playwright_stealth import stealth_sync
-    _STEALTH_OK = True
-except ImportError:
-    _STEALTH_OK = False
+from stealth_compat import apply_stealth_sync
 
 RANK_LOG = Path("keyword_rank_log.csv")
 
@@ -48,8 +44,7 @@ def check_naver_rank_sync(
         )
         context = browser.new_context(**context_args, locale="ko-KR", timezone_id="Asia/Seoul")
         page = context.new_page()
-        if _STEALTH_OK:
-            stealth_sync(page)
+        apply_stealth_sync(page)
 
         page.goto(shop_url, wait_until="domcontentloaded", timeout=25_000)
         time.sleep(random.uniform(1.5, 2.5))

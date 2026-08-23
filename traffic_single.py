@@ -16,7 +16,8 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from urllib.parse import quote
 from playwright.async_api import async_playwright
-from playwright_stealth import Stealth
+
+from stealth_compat import apply_stealth_async
 
 try:
     import ollama
@@ -565,6 +566,7 @@ class PermacoatAutonomousEngine:
             # 브라우저 설정
             chosen_ua = random.choice(USER_AGENTS)
             is_mobile = "iPhone" in chosen_ua or "Android" in chosen_ua
+            browser = None
 
             browser = await p.chromium.launch(
                 headless=False,
@@ -605,7 +607,7 @@ class PermacoatAutonomousEngine:
                 window.chrome = {runtime: {}};
             """)
 
-            await Stealth().apply_stealth_async(page)
+            await apply_stealth_async(page)
             await page.route("**/*", self.interceptor)
 
             try:
@@ -786,7 +788,11 @@ class PermacoatAutonomousEngine:
                     await asyncio.sleep(30 * 60)
             finally:
                 print("🔒 브라우저 완전 종료 (흔적 삭제)")
-                await browser.close()
+                if browser is not None:
+                    try:
+                        await browser.close()
+                    except Exception:
+                        pass
 
     # ── 24시간 메인 루프 ─────────────────────────────────────
     async def start_engine(self):
